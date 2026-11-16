@@ -35,12 +35,25 @@ export default function App() {
   const loc = useLocation();
 
   useEffect(() => {
-    const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+    // Floating panels marked data-scroll-trap scroll on their own: Lenis leaves them alone, and a
+    // wheel that their inner lists can't absorb (at an end, or nothing to scroll) never reaches the page.
+    const lenis = new Lenis({ duration: 1.1, smoothWheel: true, prevent: (node) => node.hasAttribute("data-scroll-trap") });
     let raf = 0;
     const loop = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
     (window as any).__lenis = lenis;
-    return () => { cancelAnimationFrame(raf); lenis.destroy(); };
+    const trap = (e: WheelEvent) => {
+      const box = (e.target as Element | null)?.closest?.("[data-scroll-trap]");
+      if (!box || !e.deltaY) return;
+      for (let n = e.target as HTMLElement | null; n && box.contains(n); n = n.parentElement) {
+        if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(n).overflowY)) {
+          if (e.deltaY < 0 ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1) return;
+        }
+      }
+      e.preventDefault();
+    };
+    window.addEventListener("wheel", trap, { passive: false });
+    return () => { cancelAnimationFrame(raf); lenis.destroy(); window.removeEventListener("wheel", trap); };
   }, []);
 
   useEffect(() => {

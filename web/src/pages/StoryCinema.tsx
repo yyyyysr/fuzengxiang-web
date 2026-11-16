@@ -125,7 +125,6 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
       <div className="scine-top">
         <Link to="/stories" className="scine-back">← 藏园故事</Link>
         <span className="scine-ep">重点故事 · 第{rankLabel}则</span>
-        <span className="scine-ai">{symbols ? "背景为 AI 示意图 · 批校局部为真实材料" : "画面为 AI 示意图，非历史影像"}</span>
       </div>
 
       <AnimatePresence mode="wait">

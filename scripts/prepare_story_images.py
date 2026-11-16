@@ -1,10 +1,9 @@
-"""Compress the AI-generated story / chapter illustrations into web/public/story.
+"""Compress the story / chapter / hero illustrations into web/public/story.
 
     python scripts/prepare_story_images.py [SRC_DIR]
 
-SRC_DIR defaults to $STORY_ART_DIR. Every story-*.jpg|png and chapter-*.jpg|png is
-written as <name>.webp (max 1600px wide) plus thumb/<name>.webp (640px wide).
-These images are AI 示意图 and must be labelled as such wherever they are shown.
+SRC_DIR defaults to $STORY_ART_DIR. Every story-*, chapter-* and hero-* .jpg|png is
+written as <name>.webp (max 1600px, hero 2400px) plus thumb/<name>.webp (640px).
 """
 import os
 import sys
@@ -22,14 +21,15 @@ def main():
         sys.exit("usage: prepare_story_images.py SRC_DIR (or set STORY_ART_DIR)")
     (DEST / "thumb").mkdir(parents=True, exist_ok=True)
     files = sorted(p for p in src.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
-                   and p.stem.startswith(("story-", "chapter-")))
+                   and p.stem.startswith(("story-", "chapter-", "hero-")))
     total = 0
     for p in files:
         with Image.open(p) as im:
             im = im.convert("RGB")
             w, h = im.size
             big = im.copy()
-            big.thumbnail((1600, 1600), Image.LANCZOS)
+            edge = 2400 if p.stem.startswith("hero-") else 1600
+            big.thumbnail((edge, edge), Image.LANCZOS)
             big.save(DEST / f"{p.stem}.webp", "WEBP", quality=80, method=6)
             small = im.copy()
             small.thumbnail((640, 640), Image.LANCZOS)

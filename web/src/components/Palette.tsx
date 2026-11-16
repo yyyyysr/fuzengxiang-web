@@ -141,7 +141,7 @@ export function Palette() {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="pal-mask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onMouseDown={close}>
+        <motion.div className="pal-mask" data-scroll-trap initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onMouseDown={close}>
           <motion.div className="pal" role="dialog" aria-modal="true" aria-label="快速跳转" onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown}
             initial={{ opacity: 0, y: -14, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 420, damping: 32 }}>

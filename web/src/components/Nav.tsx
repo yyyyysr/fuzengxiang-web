@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { openPalette } from "../lib/store";
+import { SearchGlyph } from "./SearchGlyph";
 
 export const NAV = [
   { to: "/", label: "首页" },
@@ -31,7 +32,7 @@ export function Nav() {
     <nav className={`nav ${overHero ? "dark" : "solid"}`}>
       <div className="nav-inner">
         <Link to="/" className="logo" aria-label="返回首页">
-          <span className="logo-seal">藏</span>
+          <img className="logo-mark" src="/logo.webp" alt="" width={38} height={38} />
           <span className="logo-text">书魂永不散<span className="logo-sub">藏园</span></span>
         </Link>
         <div className={`nav-links ${open ? "open" : ""}`}>
@@ -46,7 +47,9 @@ export function Nav() {
             </NavLink>
           ))}
           <button className="nav-search" onClick={openPalette} title="快速跳转与检索（Ctrl K）" aria-label="检索">
-            ⌕<kbd className="nav-kbd">Ctrl K</kbd>
+            <SearchGlyph size={17} />
+            <span className="nav-search-t">检索</span>
+            <kbd className="nav-kbd">Ctrl K</kbd>
           </button>
         </div>
         <button className="nav-burger" onClick={() => setOpen((v) => !v)} aria-label="菜单">{open ? "×" : "☰"}</button>

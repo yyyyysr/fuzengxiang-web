@@ -67,7 +67,7 @@ function BookModal({ book, onClose }: { book: Book; onClose: () => void }) {
   useEffect(() => { api<WikiPage>(`/wiki/${encodeURIComponent(book.id)}`).then(setPage).catch(() => {}); express("happy", 2500); }, [book.id, express]);
   const stories = page?.backlink_cards.filter((c) => c.type === "story") || [];
   return (
-    <motion.div className="modal-mask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+    <motion.div className="modal-mask" data-scroll-trap initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="book-modal" initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
         transition={{ type: "spring", stiffness: 240, damping: 26 }} onClick={(e) => e.stopPropagation()}>
         <button className="drawer-close" onClick={onClose} aria-label="关闭">×</button>

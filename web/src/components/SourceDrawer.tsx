@@ -37,9 +37,10 @@ export function SourceDrawer() {
     <AnimatePresence>
       {current && (
         <>
-          <motion.div className="drawer-mask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close} />
+          <motion.div className="drawer-mask" data-scroll-trap initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={close} />
           <motion.aside
             className="drawer"
+            data-scroll-trap
             initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 260 }}
             role="dialog" aria-label="出处原文"

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { SearchGlyph } from "../components/SearchGlyph";
 import { PageHeader, Reveal } from "../components/ui";
 import { api, routeFor, TYPE_LABEL } from "../lib/api";
 import { useAgent, usePageAgent, useSource } from "../lib/store";
@@ -38,7 +39,10 @@ export function Search() {
       <PageHeader eyebrow="全站检索" title="检书" lead={<p>同时检索知识库页面与 {""}整理入库的原文段落。</p>} />
       <section className="narrow">
         <form className="search-box" onSubmit={(e) => { e.preventDefault(); setParams(input.trim() ? { q: input.trim() } : {}); }}>
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="人名、书名、年份……" autoFocus />
+          <label className="search-field">
+            <SearchGlyph size={20} />
+            <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="人名、书名、年份……" autoFocus aria-label="检索词" />
+          </label>
           <button className="btn solid">检索</button>
         </form>
         <div className="tl-filters left">{HOT.map((h) => <button key={h} className="chip" onClick={() => setParams({ q: h })}>{h}</button>)}</div>

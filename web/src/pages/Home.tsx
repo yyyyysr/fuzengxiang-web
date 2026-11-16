@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useMotionValue, useScroll, useSpring, useTransform } from "framer-motion";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { InkBlot, InkMountains, Mist, ridge } from "../components/Ink";
+import { InkBlot, Mist, ridge } from "../components/Ink";
 import { Loader } from "../components/Loader";
 import { PointerMist } from "../components/PointerMist";
 import { TiltLink } from "../components/Tilt";
@@ -51,17 +51,21 @@ function Hero({ ready }: { ready: boolean }) {
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const y = useTransform(scrollYProgress, [0, 1], [0, 220]);
+  const bgY = useTransform(scrollYProgress, [0, 1], [0, 110]);
   const fade = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
   const mx = useMotionValue(0);
   const sx = useSpring(mx, { stiffness: 40, damping: 18 });
-  const tilt = useTransform(sx, [-1, 1], [18, -18]);
+  const tilt = useTransform(sx, [-1, 1], [14, -14]);
   return (
     <section className="hero" ref={ref} onPointerMove={(e) => mx.set((e.clientX / window.innerWidth) * 2 - 1)}>
-      <div className="hero-sky" />
-      <motion.div className="hero-sun" style={{ y }} initial={{ scale: 0.4, opacity: 0 }} animate={ready ? { scale: 1, opacity: 1 } : {}} transition={{ duration: 2.2, ease: [0.22, 1, 0.36, 1] }} />
-      <motion.div className="hero-mountains" style={{ x: tilt }}>
-        <InkMountains progress={scrollYProgress} width={1800} height={700} />
+      <motion.div className="hero-art" style={{ x: tilt, y: bgY }}>
+        <motion.div className="hero-art-frame" initial={{ scale: 1.1, opacity: 0 }} animate={ready ? { scale: 1, opacity: 1 } : {}} transition={{ duration: 3.2, ease: [0.22, 1, 0.36, 1] }}>
+          <img src={artUrl("hero-cangyuan")} alt="" decoding="async" />
+          <span className="hero-lamp" />
+          <span className="hero-lamp hero-lamp-water" />
+        </motion.div>
       </motion.div>
+      <div className="hero-veil" />
       <Mist />
       <PointerMist />
       <motion.div className="hero-content" style={{ opacity: fade, y }}>
@@ -174,7 +178,7 @@ function SceneModal({ scene, onClose }: { scene: Scene; onClose: () => void }) {
   const { express } = useAgent();
   useEffect(() => { express(scene.tone === "sad" ? "sad" : "happy", 3000); }, [scene, express]);
   return (
-    <motion.div className="modal-mask" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+    <motion.div className="modal-mask" data-scroll-trap initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="scene-modal" initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }} onClick={(e) => e.stopPropagation()}>
         <img src={kbAsset(`images/${scene.img}.${scene.img === "img-0069" ? "jpg" : "png"}`)} onError={(e) => ((e.target as HTMLImageElement).src = kbAsset(`images/thumbs/${scene.img}.jpg`))} alt={scene.title} />
@@ -256,7 +260,6 @@ function Columns() {
           <Reveal className="b-cell b-life">
             <TiltLink to="/life" className="bento-tile dark" max={4}>
               <img className="b-bg" src={artUrl("chapter-1")} alt="" loading="lazy" />
-              <span className="b-ai">AI 示意图</span>
               <div className="b-body">
                 <span className="col-seal">人</span>
                 <span className="b-eyebrow">认识傅增湘</span>
@@ -383,7 +386,7 @@ function Footer() {
     <footer className="footer">
       <div className="container footer-inner">
         <div>
-          <div className="logo"><span className="logo-seal">藏</span><span>书魂永不散藏园</span></div>
+          <div className="logo"><img className="logo-mark" src="/logo.webp" alt="" width={38} height={38} loading="lazy" /><span>书魂永不散藏园</span></div>
           <p className="muted small">傅增湘藏书家智能体 · 内容依据整理入库的论文、图书摘录、档案与图像，史实以原文为准。小傅是当代导览角色，不代表傅增湘本人发言。</p>
         </div>
         <div className="footer-links">

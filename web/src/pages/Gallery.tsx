@@ -53,7 +53,7 @@ export function Gallery() {
       </section>
       <AnimatePresence>
         {im && (
-          <motion.div className="lightbox" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCur(null)}>
+          <motion.div className="lightbox" data-scroll-trap initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCur(null)}>
             <motion.figure key={im.id} initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
               <img src={kbAsset(im.file)} alt={im.title} />
               <figcaption>

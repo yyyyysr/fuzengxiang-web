@@ -25,7 +25,7 @@ export function Stories() {
   const others = tl.filter((t) => t.kind === "event" && !t.story);
   return (
     <div className="page stories">
-      <PageHeader eyebrow="藏园故事" title="一件与书有关的事，后来怎样了" lead={<p>访书、护书、校书、影印、公藏——十个有材料支撑的故事，逐幕放映，再由你排出先后。画面均为 AI 示意图，文字每一幕都可回到出处。</p>} />
+      <PageHeader eyebrow="藏园故事" title="一件与书有关的事，后来怎样了" lead={<p>访书、护书、校书、影印、公藏——十个有材料支撑的故事，逐幕放映，再由你排出先后。每一幕的文字都可回到出处。</p>} />
       {err && <ErrorNote msg={err} />}
       <section className="container">
         {!list.length && !err && <Loading h={420} />}
@@ -37,7 +37,6 @@ export function Stories() {
                 <TiltLink to={`/stories/${encodeURIComponent(s.id)}`} className={`story-card poster ${SAD_STORIES.has(s.id) ? "sad" : ""}`}>
                   <div className="poster-img">
                     {poster && <img src={artUrl(poster, i !== 0)} alt="" loading="lazy" />}
-                    {poster && <span className="poster-ai">AI 示意图</span>}
                     <span className="story-no brush">{CN_NUM[s.rank] || s.rank}</span>
                   </div>
                   <div className="story-card-body">

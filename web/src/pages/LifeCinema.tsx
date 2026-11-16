@@ -358,7 +358,6 @@ export function LifeCinema({ items }: { items: TimelineItem[] }) {
             })}
           </div>
         </div>
-        <span className="cine-ai">画面为 AI 示意图，非历史影像</span>
       </div>
     </section>
   );

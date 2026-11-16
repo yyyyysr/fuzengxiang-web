@@ -130,12 +130,13 @@ p { margin: 0 0 1em; }
 .nav.dark { color: #f3ecdf; }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; width: min(1280px, 100% - 40px); margin: 0 auto; }
 .logo { display: flex; align-items: center; gap: 12px; font-size: 18px; letter-spacing: 0.2em; }
-.logo-seal { width: 34px; height: 34px; background: var(--zhu); color: #fbf4e6; display: grid; place-items: center; border-radius: 4px; font-family: var(--font-brush); font-size: 20px; box-shadow: inset 0 0 0 2px rgba(251, 244, 230, 0.6); }
+.logo-mark { width: 38px; height: 38px; flex: none; transform: rotate(-3deg); filter: drop-shadow(0 2px 3px rgba(60, 20, 12, 0.25)); transition: transform 0.5s var(--ease); }
+.logo:hover .logo-mark { transform: rotate(0deg) scale(1.06); }
+.nav.dark .logo-mark { filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45)); }
 .nav-links { display: flex; gap: 6px; align-items: center; }
 .nav-link { position: relative; padding: 8px 12px; font-size: 15px; white-space: nowrap; letter-spacing: 0.14em; opacity: 0.82; transition: opacity 0.3s; }
 .nav-link:hover, .nav-link.active { opacity: 1; }
 .nav-link .bar { position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px; background: var(--zhu); border-radius: 2px; }
-.nav-search { width: 36px; height: 36px; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: inherit; display: grid; place-items: center; opacity: 0.8; }
 .nav-burger { display: none; background: none; border: 0; color: inherit; font-size: 22px; }
 @media (max-width: 1120px) and (min-width: 1081px) { .logo-sub { display: none; } .nav-link { padding: 8px 9px; letter-spacing: 0.08em; } }
 @media (max-width: 1080px) {

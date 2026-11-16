@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-const PRELOAD = ["/xiaofu/idle.webp", "/xiaofu/happy.webp", "/xiaofu/thinking.webp", "/kb-assets/images/thumbs/img-0069.jpg", "/kb-assets/images/thumbs/img-0009.jpg"];
+const PRELOAD = ["/story/hero-cangyuan.webp", "/logo.webp", "/xiaofu/idle.webp", "/xiaofu/happy.webp", "/xiaofu/thinking.webp", "/kb-assets/images/thumbs/img-0069.jpg", "/kb-assets/images/thumbs/img-0009.jpg"];
 
 /** Opening screen with a real percentage (preloads key images + data), like the CGTN piece. */
 export function Loader({ onDone }: { onDone: () => void }) {
@@ -38,9 +38,8 @@ export function Loader({ onDone }: { onDone: () => void }) {
     <AnimatePresence>
       {!leaving && (
         <motion.div className="loader" exit={{ clipPath: "circle(0% at 50% 50%)", opacity: 0 }} transition={{ duration: 0.9, ease: [0.65, 0, 0.35, 1] }}>
-          <motion.div className="loader-seal" initial={{ scale: 0.6, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: -6 }} transition={{ type: "spring", stiffness: 200, damping: 14 }}>
-            藏园
-          </motion.div>
+          <motion.img className="loader-seal" src="/logo.webp" alt="" width={104} height={104}
+            initial={{ scale: 1.6, opacity: 0, rotate: -14 }} animate={{ scale: 1, opacity: 1, rotate: -4 }} transition={{ type: "spring", stiffness: 260, damping: 16 }} />
           <div className="loader-title brush">书魂永不散藏园</div>
           <div className="loader-bar"><motion.span style={{ width: `${pct}%` }} /></div>
           <div className="loader-pct">{pct}%</div>

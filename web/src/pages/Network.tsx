@@ -169,7 +169,7 @@ function SidePanel({ id, people, edges, onClose }: { id: string; people: Person[
   const person = people.find((p) => p.id === id);
   const related = edges.filter((e) => e.source === id || e.target === id);
   return (
-    <motion.aside className="net-panel card" initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}>
+    <motion.aside className="net-panel card" data-scroll-trap initial={{ x: 40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 40, opacity: 0 }}>
       <button className="drawer-close" onClick={onClose}>×</button>
       {!page ? <Loading h={200} /> : (
         <>

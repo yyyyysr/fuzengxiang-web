@@ -21,10 +21,32 @@
 @keyframes inkSplash { from { transform: rotate(var(--rot)) scale(0.2); opacity: 1; } to { transform: rotate(var(--rot)) scale(1.5); opacity: 0; } }
 
 /* ---------- 命令面板（Ctrl K） ---------- */
-.nav-search { width: auto; min-width: 36px; padding: 0 10px; gap: 8px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 16px; transition: opacity 0.3s, background 0.3s; }
-.nav-search:hover { opacity: 1; background: rgba(168, 50, 42, 0.08); }
-.nav-kbd { font: 11px/1 var(--font-body); letter-spacing: 0.06em; padding: 3px 6px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.6; }
-@media (max-width: 1100px) { .nav-kbd { display: none; } }
+.search-glyph { flex: none; overflow: visible; }
+.search-glyph .sg-lens { fill: currentColor; fill-opacity: 0.07; stroke: currentColor; stroke-width: 1.8; }
+.search-glyph .sg-glint { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; opacity: 0.55; stroke-dasharray: 7; stroke-dashoffset: 0; }
+.search-glyph .sg-handle { fill: none; stroke: var(--zhu); stroke-width: 2.7; stroke-linecap: round; }
+
+.nav-search { position: relative; height: 34px; margin-left: 6px; padding: 0 6px 0 11px; display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; color: inherit;
+  border: 1px solid rgba(168, 135, 63, 0.38); background: rgba(255, 250, 240, 0.55); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  font: 13px/1 var(--font-body); letter-spacing: 0.16em; transition: border-color 0.3s, background 0.3s, box-shadow 0.3s, transform 0.3s var(--ease); }
+.nav.dark .nav-search { border-color: rgba(243, 236, 223, 0.32); background: rgba(20, 16, 12, 0.22); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.nav.dark .search-glyph .sg-handle { stroke: #e58a6e; }
+.nav-search .search-glyph { transition: transform 0.45s var(--ease); transform-origin: 43% 43%; }
+.nav-search:hover { border-color: rgba(168, 50, 42, 0.55); background: rgba(255, 250, 240, 0.85); box-shadow: 0 6px 18px -10px rgba(168, 50, 42, 0.55); }
+.nav.dark .nav-search:hover { border-color: rgba(243, 236, 223, 0.6); background: rgba(20, 16, 12, 0.36); box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.6); }
+.nav-search:hover .search-glyph { transform: rotate(-14deg) scale(1.08); }
+.nav-search:hover .sg-glint { animation: sgGlint 0.7s var(--ease); }
+@keyframes sgGlint { from { stroke-dashoffset: 7; } to { stroke-dashoffset: 0; } }
+.nav-search-t { padding-right: 2px; }
+.nav-kbd { font: 10.5px/1 var(--font-body); letter-spacing: 0.04em; padding: 4px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.06); opacity: 0.75; }
+.nav.dark .nav-kbd { background: rgba(255, 255, 255, 0.12); }
+@media (max-width: 1240px) { .nav-search-t { display: none; } }
+@media (max-width: 1100px) { .nav-kbd { display: none; } .nav-search { padding: 0 9px; } }
+@media (max-width: 1080px) {
+  .nav-search, .nav.dark .nav-search { margin: 8px 0 0; padding: 0 18px; height: 38px; color: var(--ink); border-color: rgba(168, 135, 63, 0.4); background: rgba(255, 250, 240, 0.8); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .nav.dark .search-glyph .sg-handle { stroke: var(--zhu); }
+  .nav-search-t { display: inline; }
+}
 
 .pal-mask { position: fixed; inset: 0; z-index: 200; display: flex; justify-content: center; align-items: flex-start; padding: 13vh 16px 16px;
   background: rgba(24, 18, 13, 0.42); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -86,8 +108,6 @@
 .bento-tile.dark .b-foot { margin-top: 18px; }
 .b-go { font-size: 14px; letter-spacing: 0.24em; color: #ffb18f; transition: transform 0.4s var(--ease); }
 .bento-tile:hover .b-go { transform: translateX(6px); }
-.b-ai { position: absolute; top: 14px; right: 14px; z-index: 2; font-size: 11px; letter-spacing: 0.1em; padding: 2px 9px; border-radius: 999px; color: rgba(255, 248, 236, 0.82); background: rgba(0, 0, 0, 0.36); }
-
 /* 藏园故事：海报扇面 */
 .bento-tile.zhu { background: radial-gradient(130% 150% at 0% 0%, #8f3628 0%, #5a2219 52%, #2e1a14 100%); color: #fbf1e4; }
 .b-posters { position: relative; flex: 0 0 46%; }
