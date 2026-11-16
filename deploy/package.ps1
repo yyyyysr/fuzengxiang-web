@@ -1,4 +1,4 @@
-# 生成服务器部署包：构建前端 + 后端代码 + 知识库运行所需数据（不含原始 PDF 与 Python 虚拟环境）
+# 生成服务器部署包：构建前端 + 后端代码 + 知识库运行所需数据（含向量与 ONNX 查询编码器；不含原始 PDF 与 Python 虚拟环境）
 #   .\deploy\package.ps1  ->  deploy\out\fuzengxiang-deploy.tar.gz
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -18,7 +18,8 @@ Copy-Item "$root\web\dist" "$stage\app\web\dist" -Recurse
 New-Item -ItemType Directory -Force "$stage\app\deploy" | Out-Null
 Copy-Item "$root\deploy\install.sh", "$root\deploy\requirements-server.txt" "$stage\app\deploy\"
 Copy-Item "$kb\data\export" "$stage\kb\data\export" -Recurse
-Copy-Item "$kb\data\index\kb.sqlite" "$stage\kb\data\index\"
+Copy-Item "$kb\data\index\kb.sqlite", "$kb\data\index\embeddings.npy", "$kb\data\index\embeddings_ids.json" "$stage\kb\data\index\"
+if (Test-Path "$kb\data\index\onnx\model.onnx") { Copy-Item "$kb\data\index\onnx" "$stage\kb\data\index\onnx" -Recurse }
 Copy-Item "$kb\assets" "$stage\kb\assets" -Recurse
 Get-ChildItem $stage -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
 

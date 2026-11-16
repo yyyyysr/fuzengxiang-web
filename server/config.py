@@ -36,3 +36,4 @@ LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
 
 # Dense retrieval needs sentence-transformers + data/index/embeddings.npy.
 ENABLE_DENSE = os.environ.get("ENABLE_DENSE", "1") == "1"
+DENSE_THREADS = int(os.environ.get("DENSE_THREADS", "2"))

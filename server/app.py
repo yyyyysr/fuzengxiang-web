@@ -37,7 +37,7 @@ def need(obj, what="资源"):
 @app.get("/api/health")
 def health():
     return {"ok": True, "kb_root": str(config.KB_ROOT), "pages": len(kb.pages), "documents": len(kb.documents),
-            "llm": llm.settings.public(), "dense": {"ready": rag.dense.ready, "error": rag.dense.error}}
+            "llm": llm.settings.public(), "dense": {"ready": rag.dense.ready, "backend": rag.dense.backend, "error": rag.dense.error}}
 
 
 @app.post("/api/admin/reload")

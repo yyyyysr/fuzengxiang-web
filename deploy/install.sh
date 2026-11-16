@@ -79,7 +79,8 @@ EnvironmentFile=/etc/environment
 Environment=KB_ROOT=$BASE/kb
 Environment=HOST=0.0.0.0
 Environment=PORT=$PORT
-Environment=ENABLE_DENSE=0
+Environment=ENABLE_DENSE=1
+Environment=DENSE_THREADS=2
 Environment=PYTHONIOENCODING=utf-8
 ExecStart=$BASE/venv/bin/python $BASE/app/server/app.py
 Restart=always

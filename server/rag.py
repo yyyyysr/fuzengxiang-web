@@ -70,11 +70,16 @@ def guide_digest(body: str, limit: int = 18) -> list[str]:
 
 
 class Dense:
-    """Optional embedding retrieval, loaded in the background so startup stays fast."""
+    """Optional embedding retrieval, loaded in the background so startup stays fast.
+
+    Queries are encoded with data/index/onnx/model.onnx (onnxruntime + tokenizers, no torch)
+    when present, otherwise with sentence-transformers. Corpus vectors are precomputed.
+    """
 
     def __init__(self) -> None:
         self.ready = False
         self.error = ""
+        self.backend = ""
         if config.ENABLE_DENSE and (config.INDEX / "embeddings.npy").exists():
             threading.Thread(target=self._load, daemon=True).start()
         else:
@@ -83,13 +88,35 @@ class Dense:
     def _load(self) -> None:
         try:
             import numpy as np
-            from modelscope import snapshot_download
-            from sentence_transformers import SentenceTransformer
             meta = json.loads((config.INDEX / "embeddings_ids.json").read_text(encoding="utf-8"))
             self.rows = meta["rows"]
             self.vecs = np.load(config.INDEX / "embeddings.npy").astype("float32")
-            self.model = SentenceTransformer(snapshot_download(meta["model"]))
             self.np = np
+            onnx_dir = config.INDEX / "onnx"
+            if (onnx_dir / "model.onnx").exists():
+                import onnxruntime as ort
+                from tokenizers import Tokenizer
+                opts = ort.SessionOptions()
+                opts.intra_op_num_threads = config.DENSE_THREADS  # leave cores for the web server
+                opts.inter_op_num_threads = 1
+                sess = ort.InferenceSession(str(onnx_dir / "model.onnx"), opts, providers=["CPUExecutionProvider"])
+                tok = Tokenizer.from_file(str(onnx_dir / "tokenizer.json"))
+                tok.enable_truncation(128)
+
+                def encode(text: str):
+                    e = tok.encode(text)
+                    feed = {"input_ids": np.array([e.ids], np.int64), "attention_mask": np.array([e.attention_mask], np.int64),
+                            "token_type_ids": np.array([e.type_ids], np.int64)}
+                    return sess.run(None, feed)[0][0]
+                self.backend = "onnx"
+            else:
+                from modelscope import snapshot_download
+                from sentence_transformers import SentenceTransformer
+                model = SentenceTransformer(snapshot_download(meta["model"]))
+                encode = lambda text: model.encode([text], normalize_embeddings=True)[0]  # noqa: E731
+                self.backend = "sentence-transformers"
+            encode("预热")
+            self.encode = encode
             self.ready = True
         except Exception as e:  # noqa: BLE001 - optional component
             self.error = str(e)[:200]
@@ -97,7 +124,7 @@ class Dense:
     def search(self, query: str, k: int = 30) -> list[dict]:
         if not self.ready:
             return []
-        q = self.model.encode(["为这个句子生成表示以用于检索相关文章：" + query], normalize_embeddings=True)[0]
+        q = self.encode("为这个句子生成表示以用于检索相关文章：" + query)
         scores = self.vecs @ q
         top = scores.argsort()[::-1][:k]
         return [{**self.rows[i], "sim": float(scores[i])} for i in top]
