@@ -2,7 +2,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import Lenis from "lenis";
 import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
+import { InkCursor } from "./components/InkCursor";
 import { Nav } from "./components/Nav";
+import { Palette } from "./components/Palette";
 import { SourceDrawer } from "./components/SourceDrawer";
 import { XiaoFu } from "./components/XiaoFu";
 import { CaseDetail, Cases } from "./pages/Cases";
@@ -66,7 +68,9 @@ export default function App() {
         </Routes>
       </AnimatePresence>
       <SourceDrawer />
+      <Palette />
       <XiaoFu />
+      <InkCursor />
     </>
   );
 }

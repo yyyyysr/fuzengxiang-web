@@ -1,11 +1,14 @@
 import { AnimatePresence, motion, useMotionValue, useScroll, useSpring, useTransform } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { InkBlot, InkMountains, Mist, ridge } from "../components/Ink";
 import { Loader } from "../components/Loader";
-import { CloudDivider, Reveal, Stamp } from "../components/ui";
+import { PointerMist } from "../components/PointerMist";
+import { TiltLink } from "../components/Tilt";
+import { CloudDivider, CountUp, Reveal, Stamp } from "../components/ui";
 import { Avatar } from "../components/XiaoFu";
 import { api, kbAsset, type ImageItem } from "../lib/api";
+import { artUrl, LIFE_CHAPTERS } from "../lib/scenes";
 import { useAgent, usePageAgent } from "../lib/store";
 
 const POEM = ["篇篇题跋妙钩玄", "过目都留副本存", "手校宋元八千卷", "书魂永不散藏园"];
@@ -21,14 +24,8 @@ const SCENES: Scene[] = [
   { year: "1949", place: "北京图书馆", title: "藏书归公", text: "手校书、“双鉴”与外库书分批进入公藏。“私家之守，不敌公库之藏矣。”", img: "img-0011", to: "/stories/藏园群书入公藏", cta: "沿清册追踪" },
 ];
 
-const SECTIONS = [
-  { to: "/life", t: "认识傅增湘", d: "三十秒人物介绍、贡献五项与可筛选的互动年谱。", seal: "人" },
-  { to: "/stories", t: "藏园故事", d: "十个可点击探索的藏书故事：起、承、转、合，四幕揭晓。", seal: "事" },
-  { to: "/cases", t: "史料侦探", d: "同一件事为何有不同说法？排时间、核口径、追来源。", seal: "证" },
-  { to: "/shelf", t: "双鉴书架", d: "具体到版本的书籍卡：旧藏、经眼、校勘、题跋……", seal: "书" },
-  { to: "/network", t: "书林往来", d: "以傅增湘为中心的人物图谱，每条连线都有出处。", seal: "人" },
-  { to: "/gallery", t: "藏园图像", d: "印鉴、书法、信札、书影与肖像的图像长廊。", seal: "图" },
-];
+const POSTERS = ["story-yuefu-3", "story-yangzi-2", "story-flood-2"];
+const SPINES = ["#2e4855", "#7a2b22", "#3b4d3f", "#6b4a2b", "#4a3f5c", "#2f3e4e", "#5b3a2e"];
 
 export function Home() {
   const [ready, setReady] = useState(() => sessionStorage.getItem("fzx-loaded") === "1");
@@ -66,6 +63,7 @@ function Hero({ ready }: { ready: boolean }) {
         <InkMountains progress={scrollYProgress} width={1800} height={700} />
       </motion.div>
       <Mist />
+      <PointerMist />
       <motion.div className="hero-content" style={{ opacity: fade, y }}>
         <div className="hero-poem">
           {ready && POEM.map((line, i) => (
@@ -207,24 +205,24 @@ function Entrances() {
         </Reveal>
         <div className="entr-grid">
           <Reveal delay={0.1}>
-            <Link to="/stories/乐府诗集避火" className="entr-card story">
+            <TiltLink to="/stories/乐府诗集避火" className="entr-card story" max={6}>
               <span className="entr-tag">藏园故事 · 约一分钟</span>
               <h3 className="brush">从一个藏书故事开始</h3>
               <p>民国三十年孟春，琉璃厂文友堂一夜大火。傅增湘珍藏二十年的北宋本《乐府诗集》，那天晚上在哪里？</p>
               <span className="entr-go">开始探索 →</span>
-            </Link>
+            </TiltLink>
           </Reveal>
           <Reveal delay={0.2} className="entr-guide">
             <Avatar emotion="encourage" size={180} className="float" />
             <button className="btn small zhu" onClick={() => openChat("我该从哪里开始了解傅增湘？")}>问小傅：从哪里开始？</button>
           </Reveal>
           <Reveal delay={0.3}>
-            <Link to="/cases/鹤林玉露信札系年" className="entr-card case">
+            <TiltLink to="/cases/鹤林玉露信札系年" className="entr-card case" max={6}>
               <span className="entr-tag">史料侦探 · 推理</span>
               <h3 className="brush">查一则史料疑案</h3>
               <p>一封谈《鹤林玉露》的信，题跋落款是 1938 年，可信里的一句“刚主兄将回”却指向另一个年份……</p>
               <span className="entr-go">开始推理 →</span>
-            </Link>
+            </TiltLink>
           </Reveal>
         </div>
       </div>
@@ -232,14 +230,20 @@ function Entrances() {
   );
 }
 
+function Stat({ n, unit }: { n?: number; unit: string }) {
+  return n ? <span className="b-stat"><CountUp to={n} /> {unit}</span> : null;
+}
+
 function Columns() {
   const [counts, setCounts] = useState<Record<string, number>>({});
-  useEffect(() => { api<{ counts: Record<string, number> }>("/overview").then((d) => setCounts(d.counts)).catch(() => {}); }, []);
-  const stat: Record<string, string> = {
-    "/life": counts.events ? `${counts.events} 个年谱节点` : "", "/stories": counts.stories ? `${counts.stories} 个重点故事` : "",
-    "/cases": counts.cases ? `${counts.cases} 个疑案` : "", "/shelf": counts.books ? `${counts.books} 部具体版本` : "",
-    "/network": counts.people ? `${counts.people} 位书林人物` : "", "/gallery": counts.images ? `${counts.images} 幅图像` : "",
-  };
+  const [people, setPeople] = useState<string[]>([]);
+  const [imgs, setImgs] = useState<ImageItem[]>([]);
+  useEffect(() => {
+    api<{ counts: Record<string, number> }>("/overview").then((d) => setCounts(d.counts)).catch(() => {});
+    api<{ id: string; title: string }[]>("/people").then((d) => setPeople(d.filter((p) => p.id !== "傅增湘").map((p) => p.title))).catch(() => {});
+    api<ImageItem[]>("/images").then((d) => setImgs(["seal", "calligraphy", "letter"].map((k) => d.find((x) => x.kind === k)).filter(Boolean) as ImageItem[])).catch(() => {});
+  }, []);
+  const ring = people.filter((n) => !n.startsWith("傅")).slice(0, 9);
   return (
     <section className="section columns">
       <div className="container">
@@ -248,24 +252,104 @@ function Columns() {
           <h2 className="section-title brush">认识人，追一卷书，查一条证据</h2>
           <p className="muted center-text">每一个可展示的事实和人物连线，都能打开出处，回到原文的那一段。</p>
         </Reveal>
-        <div className="grid cols-3 col-grid">
-          {SECTIONS.map((s, i) => (
-            <Reveal key={s.to} delay={i * 0.08}>
-              <Link to={s.to} className="card hover col-card">
-                <span className="col-seal">{s.seal}</span>
-                <h3>{s.t}</h3>
-                <p className="muted">{s.d}</p>
-                <span className="col-stat">{stat[s.to]}</span>
-              </Link>
-            </Reveal>
-          ))}
+        <div className="bento">
+          <Reveal className="b-cell b-life">
+            <TiltLink to="/life" className="bento-tile dark" max={4}>
+              <img className="b-bg" src={artUrl("chapter-1")} alt="" loading="lazy" />
+              <span className="b-ai">AI 示意图</span>
+              <div className="b-body">
+                <span className="col-seal">人</span>
+                <span className="b-eyebrow">认识傅增湘</span>
+                <h3 className="brush b-big">七十八年 · 六个篇章</h3>
+                <p>光柱下翻开《傅增湘年谱》，滚轮一下翻一个时刻；跨入新篇章时，一阵烟雾掠过画面。</p>
+                <div className="b-chapters">{LIFE_CHAPTERS.map((c) => <span key={c.no}>{c.name}</span>)}</div>
+                <div className="b-foot"><Stat n={counts.events} unit="个年谱节点" /><span className="b-go">开卷 →</span></div>
+              </div>
+            </TiltLink>
+          </Reveal>
+          <Reveal className="b-cell b-stories" delay={0.08}>
+            <TiltLink to="/stories" className="bento-tile zhu" max={5}>
+              <div className="b-body">
+                <span className="col-seal light">事</span>
+                <h3>藏园故事</h3>
+                <p>十个有材料支撑的故事：逐幕放映，再把情节排出先后。</p>
+                <div className="b-foot"><Stat n={counts.stories} unit="个重点故事" /></div>
+              </div>
+              <div className="b-posters" aria-hidden>
+                {POSTERS.map((p, i) => <img key={p} src={artUrl(p, true)} alt="" loading="lazy" style={{ "--i": i } as CSSProperties} />)}
+              </div>
+            </TiltLink>
+          </Reveal>
+          <Reveal className="b-cell b-cases" delay={0.16}>
+            <TiltLink to="/cases" className="bento-tile qing" max={6}>
+              <div className="b-dossier" aria-hidden><i /><i /><i><b>卷宗</b><em>待查</em></i></div>
+              <div className="b-body">
+                <span className="col-seal light">证</span>
+                <h3>史料侦探</h3>
+                <p>先下判断，再翻证据卡。</p>
+                <div className="b-foot"><Stat n={counts.cases} unit="份卷宗" /></div>
+              </div>
+            </TiltLink>
+          </Reveal>
+          <Reveal className="b-cell b-shelf" delay={0.24}>
+            <TiltLink to="/shelf" className="bento-tile paper" max={6}>
+              <div className="b-spines" aria-hidden>
+                {SPINES.map((c, i) => <i key={c} style={{ background: c, height: `${62 + ((i * 37) % 30)}%` }} />)}
+              </div>
+              <div className="b-body">
+                <span className="col-seal">书</span>
+                <h3>双鉴书架</h3>
+                <p>旧藏还是经眼？每种关系都带出处。</p>
+                <div className="b-foot"><Stat n={counts.books} unit="部具体版本" /></div>
+              </div>
+            </TiltLink>
+          </Reveal>
+          <Reveal className="b-cell b-network" delay={0.08}>
+            <TiltLink to="/network" className="bento-tile paper" max={5}>
+              <div className="b-body">
+                <span className="col-seal">往</span>
+                <h3>书林往来</h3>
+                <p>以傅增湘为中心的人物关系图，没有出处的线一条不画。</p>
+                <div className="b-foot"><Stat n={counts.people} unit="位书林人物" /></div>
+              </div>
+              <svg className="b-net" viewBox="0 0 300 220" aria-hidden>
+                {ring.map((name, i) => {
+                  const a = (i / ring.length) * Math.PI * 2 - Math.PI / 2;
+                  const x = 150 + Math.cos(a) * 112, y = 110 + Math.sin(a) * 82;
+                  return (
+                    <g key={name}>
+                      <motion.line x1={150} y1={110} x2={x} y2={y} initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }}
+                        transition={{ duration: 0.9, delay: 0.3 + i * 0.08 }} />
+                      <g transform={`translate(${x} ${y})`}>
+                        <g className="b-node" style={{ "--d": `${i * -0.7}s` } as CSSProperties}><circle r={15} /><text dy="0.36em">{name[0]}</text></g>
+                      </g>
+                    </g>
+                  );
+                })}
+                <g className="b-node core" transform="translate(150 110)"><circle r={24} /><text dy="0.36em">傅</text></g>
+              </svg>
+            </TiltLink>
+          </Reveal>
+          <Reveal className="b-cell b-gallery" delay={0.16}>
+            <TiltLink to="/gallery" className="bento-tile ink" max={5}>
+              <div className="b-body">
+                <span className="col-seal light">图</span>
+                <h3>藏园图像</h3>
+                <p>印鉴、书法、信札与书影，资料库里的真实图像。</p>
+                <div className="b-foot"><Stat n={counts.images} unit="幅图像" /></div>
+              </div>
+              <div className="b-frames" aria-hidden>
+                {imgs.map((im, i) => <figure key={im.id} style={{ "--i": i } as CSSProperties}><img src={kbAsset(im.thumb)} alt="" loading="lazy" /></figure>)}
+              </div>
+            </TiltLink>
+          </Reveal>
         </div>
         {counts.documents ? (
           <Reveal className="data-strip">
-            <div><b>{counts.documents}</b><span>篇文献整理入库</span></div>
-            <div><b>{counts.canonical}</b><span>篇去重后的主本</span></div>
-            <div><b>{counts.events}</b><span>个可定年的事件</span></div>
-            <div><b>{counts.images}</b><span>幅印鉴书画图像</span></div>
+            <div><b><CountUp to={counts.documents} /></b><span>篇文献整理入库</span></div>
+            <div><b><CountUp to={counts.canonical} /></b><span>篇去重后的主本</span></div>
+            <div><b><CountUp to={counts.events} /></b><span>个可定年的事件</span></div>
+            <div><b><CountUp to={counts.images} /></b><span>幅印鉴书画图像</span></div>
           </Reveal>
         ) : null}
       </div>

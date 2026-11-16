@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
+import { TiltLink } from "../components/Tilt";
 import { ErrorNote, Loading, PageHeader, Reveal } from "../components/ui";
 import { api, type Case, type CaseCard } from "../lib/api";
 import { useAgent, usePageAgent } from "../lib/store";
@@ -24,14 +25,14 @@ export function Cases() {
         <div className="case-grid">
           {list.map((c, i) => (
             <Reveal key={c.id} delay={i * 0.08}>
-              <Link to={`/cases/${encodeURIComponent(c.id)}`} className="dossier">
+              <TiltLink to={`/cases/${encodeURIComponent(c.id)}`} className="dossier" max={5}>
                 <span className="dossier-tab">卷宗 {String(c.rank).padStart(2, "0")}</span>
                 <span className={`dossier-status seal ${c.case_status === "resolved" ? "solid" : "gold"}`}>{c.case_status === "resolved" ? "已有结论" : "仍待查证"}</span>
                 <h3>{c.title}</h3>
                 <p>{c.question}</p>
                 <ol className="dossier-hyp">{c.hypotheses.map((h, k) => <li key={k}><b>{LETTERS[k]}</b>{h}</li>)}</ol>
                 <span className="dossier-go">开始推理 →</span>
-              </Link>
+              </TiltLink>
             </Reveal>
           ))}
         </div>

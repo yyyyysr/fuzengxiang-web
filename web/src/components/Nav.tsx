@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import { openPalette } from "../lib/store";
 
 export const NAV = [
   { to: "/", label: "首页" },
@@ -14,7 +15,6 @@ export const NAV = [
 
 export function Nav() {
   const loc = useLocation();
-  const nav = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const overHero = loc.pathname === "/" && !scrolled;
@@ -45,7 +45,9 @@ export function Nav() {
               )}
             </NavLink>
           ))}
-          <button className="nav-search" onClick={() => nav("/search")} title="检索全站" aria-label="检索">⌕</button>
+          <button className="nav-search" onClick={openPalette} title="快速跳转与检索（Ctrl K）" aria-label="检索">
+            ⌕<kbd className="nav-kbd">Ctrl K</kbd>
+          </button>
         </div>
         <button className="nav-burger" onClick={() => setOpen((v) => !v)} aria-label="菜单">{open ? "×" : "☰"}</button>
       </div>

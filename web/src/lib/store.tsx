@@ -85,6 +85,8 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 }
 
+export const openPalette = () => window.dispatchEvent(new Event("fzx:palette"));
+
 export const useAgent = () => useContext(AgentCtx)!;
 export const useSource = () => useContext(SourceCtx)!;
 

@@ -1,5 +1,18 @@
-import { motion, type HTMLMotionProps } from "framer-motion";
-import type { ReactNode } from "react";
+import { animate, motion, useInView, type HTMLMotionProps } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+/** Counts up from 0 the first time it scrolls into view. */
+export function CountUp({ to, duration = 1.6, className = "" }: { to: number; duration?: number; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const seen = useInView(ref, { once: true, margin: "-40px" });
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!seen || !to) return;
+    const c = animate(0, to, { duration, ease: [0.16, 1, 0.3, 1], onUpdate: (x) => setV(Math.round(x)) });
+    return () => c.stop();
+  }, [seen, to, duration]);
+  return <span ref={ref} className={className}><span className="sr-only">{to}</span><span aria-hidden>{v}</span></span>;
+}
 
 export function Reveal({ children, delay = 0, y = 28, className = "", ...rest }: { children: ReactNode; delay?: number; y?: number; className?: string } & HTMLMotionProps<"div">) {
   return (
