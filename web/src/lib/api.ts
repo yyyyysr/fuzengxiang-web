@@ -73,8 +73,12 @@ export async function postJSON<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
+export type ToolStep = { tool: string; label: string; input: unknown; output: string[] | string; count: number | null; ms: number };
+
 export type ChatHandlers = {
-  onStatus?: (d: { emotion: string; stage: string }) => void;
+  onStatus?: (d: { emotion: string; stage: string; model?: string }) => void;
+  onTool?: (d: ToolStep) => void;
+  onReasoning?: (text: string) => void;
   onSources?: (d: { sources: ChatSource[]; entities: string[]; terms: string[]; dense: boolean }) => void;
   onDelta?: (text: string) => void;
   onDone?: (d: { emotion: string; mode: string }) => void;
@@ -102,6 +106,8 @@ export async function streamChat(question: string, history: { role: string; cont
       if (!ev || !dataLine) continue;
       const data = JSON.parse(dataLine);
       if (ev === "status") h.onStatus?.(data);
+      else if (ev === "tool") h.onTool?.(data);
+      else if (ev === "reasoning") h.onReasoning?.(data.text);
       else if (ev === "sources") h.onSources?.(data);
       else if (ev === "delta") h.onDelta?.(data.text);
       else if (ev === "done") h.onDone?.(data);

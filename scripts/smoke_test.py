@@ -33,7 +33,7 @@ def main():
         print(f"  OK {path} -> {size}")
     req = urllib.request.Request(args.base + "/api/chat", data=json.dumps({"question": args.q}).encode(),
                                  headers={"Content-Type": "application/json"})
-    text, sources, done = "", None, None
+    text, reasoning, tools, sources, done = "", "", [], None, None
     event = None
     for raw in urllib.request.urlopen(req).read().decode("utf-8").splitlines():
         if raw.startswith("event:"):
@@ -42,10 +42,18 @@ def main():
             data = json.loads(raw[5:])
             if event == "delta":
                 text += data["text"]
+            elif event == "reasoning":
+                reasoning += data["text"]
+            elif event == "tool":
+                tools.append(data)
             elif event == "sources":
                 sources = data
             elif event == "done":
                 done = data
+    print("\ntools:")
+    for t in tools:
+        print(f"  {t['tool']:<18} {t['label']}  count={t['count']} {t['ms']}ms -> {str(t['output'])[:80]}")
+    print("reasoning:", reasoning[:300] + ("…" if len(reasoning) > 300 else ""))
     print("\nQ:", args.q)
     print("entities:", sources["entities"], "terms:", sources["terms"], "dense:", sources["dense"])
     for s in sources["sources"]:

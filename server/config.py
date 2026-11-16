@@ -26,11 +26,12 @@ INDEX = KB_ROOT / "data" / "index"
 ASSETS = KB_ROOT / "assets"
 WEB_DIST = PROJECT / "web" / "dist"
 
-# OpenAI-compatible chat completion endpoint. Leave LLM_API_KEY empty to run in
+# OpenAI-compatible chat completion endpoint. Leave the key empty to run in
 # retrieval-only mode (answers are compiled from the evidence without an LLM).
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
-LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.deepseek.com/v1")
-LLM_MODEL = os.environ.get("LLM_MODEL", "deepseek-chat")
+# LLM_* takes precedence; the server-wide DEEPSEEK_* variables are the fallback.
+LLM_API_KEY = os.environ.get("LLM_API_KEY") or os.environ.get("DEEPSEEK_API_KEY", "")
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL") or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+LLM_MODEL = os.environ.get("LLM_MODEL") or os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
 LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
 
 # Dense retrieval needs sentence-transformers + data/index/embeddings.npy.

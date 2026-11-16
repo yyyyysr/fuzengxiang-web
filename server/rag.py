@@ -1,10 +1,12 @@
 """Retrieval-augmented answering over the wiki and the source corpus."""
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import re
 import threading
+import time
 from typing import AsyncIterator
 
 import jieba
@@ -67,6 +69,7 @@ class RAG:
     def __init__(self, kb: KB) -> None:
         self.kb = kb
         self.dense = Dense()
+        jieba.initialize()
 
     # ---- retrieval -------------------------------------------------------
     def terms(self, question: str, entities: list[str]) -> list[str]:
@@ -123,9 +126,30 @@ class RAG:
         return [c for c in core if len(c) >= 2][:2]
 
     def retrieve(self, question: str, context_page: str | None = None) -> dict:
+        result = {}
+        for kind, payload in self.retrieve_steps(question, context_page):
+            if kind == "result":
+                result = payload
+        return result
+
+    def _doc_label(self, chunk_id: str) -> str:
+        doc = chunk_id.split("#")[0]
+        return self.kb.documents.get(doc, {}).get("title", doc)
+
+    def retrieve_steps(self, question: str, context_page: str | None = None):
+        """Run retrieval as a sequence of tool calls; yields ("tool", step) … then ("result", data)."""
+        def step(tool, label, inp, out, t0, count=None):
+            return ("tool", {"tool": tool, "label": label, "input": inp, "output": out,
+                             "count": count, "ms": round((time.perf_counter() - t0) * 1000)})
+
+        t0 = time.perf_counter()
         entities = self.kb.spot_entities(question)
         if context_page and context_page in self.kb.pages and context_page not in entities:
             entities.append(context_page)
+        yield step("entity_recognition", "识别问题中的实体", question,
+                   [self.kb.pages[e]["title"] for e in entities] or ["未识别到知识库实体"], t0, len(entities))
+
+        t0 = time.perf_counter()
         terms = self.terms(question, entities)
         names = []
         for e in entities:
@@ -134,6 +158,9 @@ class RAG:
             for n in self.entity_terms(e):
                 if n not in names:
                     names.append(n)
+        query_terms = (names + terms)[:8]
+        yield step("query_terms", "提取检索词（繁简归一）", question, query_terms or ["（无）"], t0, len(query_terms))
+
         con = connect()
         fused: dict[tuple, float] = {}
 
@@ -143,25 +170,48 @@ class RAG:
         others = [e for e in entities if e != "傅增湘"]
         for i, e in enumerate(entities):
             add(("wiki", e), i, 0.6 if (e == "傅增湘" and (others or terms)) else 3.0)
-        query_terms = (names + terms)[:8]
+
+        t0 = time.perf_counter()
+        wiki_hits = []
         if query_terms:
             for i, w in enumerate(self.scored(con, "wiki_pages", "page_id", query_terms, 30, ", type")):
                 if w["row"][2] not in ("meta",):
                     add(("wiki", w["id"]), i, 1.6 if w["row"][2] != "source" else 0.5)
+                    wiki_hits.append(w["id"])
+        yield step("wiki_search", "检索知识页（LLM Wiki）", query_terms,
+                   [self.kb.pages[p]["title"] for p in wiki_hits[:6] if p in self.kb.pages], t0, len(wiki_hits))
+
+        t0 = time.perf_counter()
+        chunk_hits = []
+        if query_terms:
             for i, c in enumerate(self.scored(con, "chunks", "chunk_id", query_terms, 40, ", kind")):
                 add(("chunk", c["id"]), i, 0.4 if c["row"][2] == "notes" else 1.4)
-        for i, d in enumerate(self.dense.search(question)):
+                chunk_hits.append(c["id"])
+        yield step("corpus_search", "检索原文段落（IDF 加权全文检索）", query_terms,
+                   list(dict.fromkeys(self._doc_label(c) for c in chunk_hits[:12]))[:6], t0, len(chunk_hits))
+
+        t0 = time.perf_counter()
+        dense = self.dense.search(question)
+        for i, d in enumerate(dense):
             add((d["kind"], d["id"]), i, 1.2)
+        yield step("vector_search", "语义向量召回", question,
+                   [f"{self.kb.pages[d['id']]['title'] if d['kind'] == 'wiki' and d['id'] in self.kb.pages else self._doc_label(d['id'])}（{d['sim']:.2f}）"
+                    for d in dense[:5]] if dense else ["未启用（服务器未加载嵌入模型）"], t0, len(dense))
 
         # The wiki already links its claims to source paragraphs: pull the paragraphs
         # cited by the best wiki pages in as evidence (bridges wording gaps like 水灾/大水).
+        t0 = time.perf_counter()
         top_wiki = [k[1] for k in sorted(fused, key=fused.get, reverse=True)
                     if k[0] == "wiki" and k[1] in self.kb.pages and k[1] != "傅增湘"][:2]
+        expanded = []
         for pid in top_wiki:
             for j, (doc, bid) in enumerate(self.cited_blocks(pid)[:4]):
                 r = con.execute("SELECT chunk_id FROM chunks WHERE doc_id=? AND block_ids LIKE ?", (doc, f'%"{bid}"%')).fetchone()
                 if r:
                     add(("chunk", r[0]), j, 2.0)
+                    expanded.append(f"{self._doc_label(r[0])} #{bid}")
+        yield step("citation_expand", "沿知识页出处补入原文", [self.kb.pages[p]["title"] for p in top_wiki],
+                   expanded[:6] or ["（无出处链接）"], t0, len(expanded))
 
         ranked = sorted(fused, key=fused.get, reverse=True)
         wiki_ids = [k[1] for k in ranked if k[0] == "wiki" and k[1] in self.kb.pages][:4]
@@ -186,7 +236,9 @@ class RAG:
             sources.append({"n": len(sources) + 1, "kind": "chunk", "id": c["doc_id"], "bid": c["bid"], "page": c["page"],
                             "title": c["title"], "authors": c["authors"], "citation": c["citation"],
                             "heading": c["heading"], "text": c["text"][:900]})
-        return {"entities": entities, "terms": terms, "sources": sources, "dense": self.dense.ready}
+        yield ("tool", {"tool": "rerank", "label": "RRF 融合排序，组装上下文", "input": f"{len(fused)} 个候选",
+                        "output": [f"[{s['n']}] {s['title']}" for s in sources], "count": len(sources), "ms": 0})
+        yield ("result", {"entities": entities, "terms": terms, "sources": sources, "dense": self.dense.ready})
 
     # ---- answering -------------------------------------------------------
     @staticmethod
@@ -248,7 +300,13 @@ class RAG:
 
     async def answer(self, question: str, history: list[dict], context_page: str | None) -> AsyncIterator[dict]:
         yield {"event": "status", "data": {"emotion": "thinking", "stage": "retrieving"}}
-        retrieval = self.retrieve(question, context_page)
+        retrieval = {}
+        for kind, payload in self.retrieve_steps(question, context_page):
+            if kind == "tool":
+                yield {"event": "tool", "data": payload}
+                await asyncio.sleep(0.05)  # let each step reach the browser as it happens
+            else:
+                retrieval = payload
         sources = retrieval["sources"]
         public_sources = [{k: v for k, v in s.items() if k != "text"} | {"snippet": s["text"][:160]} for s in sources]
         yield {"event": "sources", "data": {"sources": public_sources, "entities": retrieval["entities"],
@@ -256,14 +314,21 @@ class RAG:
         emotion = self.emotion(question, sources)
         mode = "llm" if llm.settings.configured else "extractive"
         if mode == "llm":
+            yield {"event": "status", "data": {"emotion": "thinking", "stage": "generating", "model": llm.settings.model}}
             try:
-                async for delta in llm.stream_chat(self.build_messages(question, sources, history)):
-                    yield {"event": "delta", "data": {"text": delta}}
+                async for kind, delta in llm.stream_chat(self.build_messages(question, sources, history)):
+                    yield {"event": "reasoning" if kind == "reasoning" else "delta", "data": {"text": delta}}
             except Exception as e:  # noqa: BLE001 - surface provider errors, then fall back
                 yield {"event": "delta", "data": {"text": f"（大模型调用失败：{e}。下面先给出资料摘编。）\n\n"}}
                 mode = "extractive"
                 yield {"event": "delta", "data": {"text": self.extractive_answer(question, retrieval)}}
         else:
+            plan = (f"未接入大模型，改用摘编模式：先取排名最高的知识页摘要作结论，"
+                    f"再从 {sum(1 for s in sources if s['kind'] == 'chunk')} 段原文中挑出含检索词"
+                    f"「{'、'.join(retrieval['terms'][:4]) or '实体名'}」的句子作依据，并标注出处编号。")
+            for i in range(0, len(plan), 10):
+                yield {"event": "reasoning", "data": {"text": plan[i:i + 10]}}
+                await asyncio.sleep(0.01)
             text = self.extractive_answer(question, retrieval)
             for i in range(0, len(text), 12):
                 yield {"event": "delta", "data": {"text": text[i:i + 12]}}

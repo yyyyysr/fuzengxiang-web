@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useNavigate } from "react-router-dom";
-import { api, postJSON, routeFor, streamChat, type ChatSource } from "../lib/api";
+import { api, postJSON, routeFor, streamChat, type ChatSource, type ToolStep } from "../lib/api";
 import { useAgent, useSource, type Emotion } from "../lib/store";
 
 const EMO_LABEL: Record<Emotion, string> = {
@@ -10,7 +10,10 @@ const EMO_LABEL: Record<Emotion, string> = {
 };
 const DEFAULT_QS = ["“双鉴楼”这个名字是怎么来的？", "傅增湘和张元济因为哪些书打过交道？", "《乐府诗集》失火那天书在哪里？", "傅增湘一生校了多少书？"];
 
-type Msg = { role: "user" | "assistant"; content: string; sources?: ChatSource[]; mode?: string; pending?: boolean };
+type Msg = {
+  role: "user" | "assistant"; content: string; sources?: ChatSource[]; mode?: string; pending?: boolean;
+  tools?: ToolStep[]; reasoning?: string; stage?: string; model?: string;
+};
 type LLMConf = { configured: boolean; base_url: string; model: string; api_key: string };
 
 export function Avatar({ emotion, size = 120, className = "" }: { emotion: Emotion; size?: number; className?: string }) {
@@ -78,6 +81,9 @@ export function XiaoFu() {
     const patch = (f: (m: Msg) => Msg) => setMsgs((all) => all.map((m, i) => (i === all.length - 1 ? f(m) : m)));
     try {
       await streamChat(question, history, page.id, {
+        onStatus: (d) => patch((m) => ({ ...m, stage: d.stage, model: d.model || m.model })),
+        onTool: (t) => patch((m) => ({ ...m, tools: [...(m.tools || []), t] })),
+        onReasoning: (t) => patch((m) => ({ ...m, reasoning: (m.reasoning || "") + t })),
         onSources: (d) => patch((m) => ({ ...m, sources: d.sources })),
         onDelta: (t) => patch((m) => ({ ...m, content: m.content + t })),
         onDone: (d) => {
@@ -196,9 +202,12 @@ function Message({ m }: { m: Msg }) {
   const text = m.content.replace(/\[(\d{1,2})\]/g, (all, n) => (byN.has(n) ? `[${n}](cite:${n})` : all));
 
   if (m.role === "user") return <div className="msg user"><p>{m.content}</p></div>;
+  const stageText = m.content ? "" : m.reasoning ? `${m.model || "模型"} 思考中……` : m.stage === "generating" ? `等待 ${m.model || "大模型"} 响应……` : "翻检资料中……";
   return (
     <motion.div className="msg bot" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      {m.pending && !m.content && <div className="typing"><i /><i /><i /> <span className="muted small">翻检资料中……</span></div>}
+      {!!m.tools?.length && <ToolTrace tools={m.tools} live={!!m.pending && !m.reasoning && !m.content} />}
+      {!!m.reasoning && <Thinking text={m.reasoning} live={!!m.pending && !m.content} />}
+      {m.pending && !m.content && <div className="typing"><i /><i /><i /> <span className="muted small">{stageText}</span></div>}
       <ReactMarkdown
         urlTransform={(u) => u}
         components={{
@@ -235,6 +244,72 @@ function Message({ m }: { m: Msg }) {
         </div>
       )}
     </motion.div>
+  );
+}
+
+const TOOL_GLYPH: Record<string, string> = {
+  entity_recognition: "识", query_terms: "词", wiki_search: "典", corpus_search: "文",
+  vector_search: "向", citation_expand: "引", rerank: "序",
+};
+
+function ToolTrace({ tools, live }: { tools: ToolStep[]; live: boolean }) {
+  const [open, setOpen] = useState<boolean | null>(null);
+  const expanded = open ?? live;
+  const total = tools.reduce((s, t) => s + (t.ms || 0), 0);
+  return (
+    <div className={`trace ${live ? "live" : ""}`}>
+      <button className="trace-head" onClick={() => setOpen(!expanded)}>
+        <span className="trace-ico">⚙</span>
+        <span>RAG 检索工具 · {tools.length} 步{live ? "进行中" : ` · ${total} ms`}</span>
+        <span className="trace-caret">{expanded ? "收起" : "展开"}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.ol className="trace-steps" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+            {tools.map((t, i) => {
+              const out = Array.isArray(t.output) ? t.output : [String(t.output)];
+              const inp = Array.isArray(t.input) ? (t.input as string[]).join("、") : String(t.input ?? "");
+              return (
+                <motion.li key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}>
+                  <span className="trace-glyph brush">{TOOL_GLYPH[t.tool] || "·"}</span>
+                  <div className="trace-body">
+                    <div className="trace-name">
+                      <code>{t.tool}</code> {t.label}
+                      <span className="trace-meta">{t.count !== null && t.count !== undefined ? `${t.count} 条` : ""}{t.ms ? ` · ${t.ms} ms` : ""}</span>
+                    </div>
+                    {inp && <div className="trace-io"><b>输入</b>{inp.length > 60 ? inp.slice(0, 60) + "…" : inp}</div>}
+                    <div className="trace-io"><b>结果</b>{out.slice(0, 6).join("；")}{out.length > 6 ? "……" : ""}</div>
+                  </div>
+                </motion.li>
+              );
+            })}
+          </motion.ol>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Thinking({ text, live }: { text: string; live: boolean }) {
+  const [open, setOpen] = useState<boolean | null>(null);
+  const expanded = open ?? live;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (live) ref.current?.scrollTo({ top: ref.current.scrollHeight }); }, [text, live]);
+  return (
+    <div className={`thinking ${live ? "live" : ""}`}>
+      <button className="trace-head" onClick={() => setOpen(!expanded)}>
+        <span className="trace-ico">✎</span>
+        <span>{live ? "思考中…" : `思考过程 · ${text.length} 字`}</span>
+        <span className="trace-caret">{expanded ? "收起" : "展开"}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div ref={ref} className="thinking-text" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+            {text}{live && <span className="caret-blink">▍</span>}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 

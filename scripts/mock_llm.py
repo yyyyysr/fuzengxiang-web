@@ -24,7 +24,13 @@ async def chat(req: Request):
     auth = req.headers.get("authorization", "")
     text = f"（模拟大模型 {body.get('model')}，收到 {n} 条资料，鉴权头{'正确' if auth == 'Bearer test-key' else '错误'}）关于“{q}”：据资料记载，傅增湘居间斡旋，使宋本《扬子法言》合璧 [1][2]。"
 
+    thinking = f"用户问的是“{q}”。资料共 {n} 条，[1][2] 是知识页，先用它们给出结论，再用原文段落作依据。"
+
     def gen():
+        for i in range(0, len(thinking), 6):
+            chunk = {"choices": [{"delta": {"reasoning_content": thinking[i:i + 6]}}]}
+            yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+            time.sleep(0.02)
         for i in range(0, len(text), 6):
             chunk = {"choices": [{"delta": {"content": text[i:i + 6]}}]}
             yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"

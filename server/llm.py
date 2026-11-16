@@ -36,7 +36,8 @@ class LLMSettings:
 settings = LLMSettings()
 
 
-async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
+async def stream_chat(messages: list[dict]) -> AsyncIterator[tuple[str, str]]:
+    """Yield ("reasoning", text) for thinking-model reasoning and ("content", text) for the answer."""
     headers = {"Authorization": f"Bearer {settings.api_key}", "Content-Type": "application/json"}
     payload = {"model": settings.model, "messages": messages, "temperature": settings.temperature, "stream": True}
     async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=15)) as client:
@@ -51,8 +52,10 @@ async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
                 if data == "[DONE]":
                     break
                 try:
-                    delta = json.loads(data)["choices"][0].get("delta", {}).get("content")
+                    delta = json.loads(data)["choices"][0].get("delta", {})
                 except (KeyError, IndexError, json.JSONDecodeError):
                     continue
-                if delta:
-                    yield delta
+                if delta.get("reasoning_content"):
+                    yield "reasoning", delta["reasoning_content"]
+                if delta.get("content"):
+                    yield "content", delta["content"]
