@@ -15,7 +15,8 @@ Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$stage\app\web", "$stage\kb\data\index", $out | Out-Null
 Copy-Item "$root\server" "$stage\app\server" -Recurse -Exclude "__pycache__"
 Copy-Item "$root\web\dist" "$stage\app\web\dist" -Recurse
-Copy-Item "$root\deploy" "$stage\app\deploy" -Recurse -Exclude "out"
+New-Item -ItemType Directory -Force "$stage\app\deploy" | Out-Null
+Copy-Item "$root\deploy\install.sh", "$root\deploy\requirements-server.txt" "$stage\app\deploy\"
 Copy-Item "$kb\data\export" "$stage\kb\data\export" -Recurse
 Copy-Item "$kb\data\index\kb.sqlite" "$stage\kb\data\index\"
 Copy-Item "$kb\assets" "$stage\kb\assets" -Recurse
