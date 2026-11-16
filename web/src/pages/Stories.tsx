@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
+import { TiltLink } from "../components/Tilt";
 import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal } from "../components/ui";
 import { api, kbAsset, stripLinks, type Act, type Story, type StoryCard, type TimelineItem } from "../lib/api";
-import { bullets } from "../lib/md";
+import { artUrl, STORY_ART } from "../lib/scenes";
 import { useAgent, usePageAgent } from "../lib/store";
+import { StoryCinema } from "./StoryCinema";
 
 const SAD_STORIES = new Set(["乐府诗集避火", "水灾运书", "东坡和陶诗失窃", "海源阁遗书散出", "永乐大典六册"]);
 const ACT_CHAR = ["起", "承", "转", "合"];
@@ -19,29 +21,36 @@ export function Stories() {
     api<StoryCard[]>("/stories").then(setList).catch((e) => setErr(e.message));
     api<TimelineItem[]>("/timeline").then(setTl).catch(() => {});
   }, []);
-  usePageAgent({ tip: "十个重点故事，每个大约一分钟：翻开四张线索卡，再把事情的先后排一排。", questions: ["哪个故事最适合第一次来的读者？", "《永乐大典》六册最后去了哪里？"] });
+  usePageAgent({ tip: "十个重点故事，每个都是一场一分钟的放映：看完几幕，再把事情的先后排一排。", questions: ["哪个故事最适合第一次来的读者？", "《永乐大典》六册最后去了哪里？"] });
   const others = tl.filter((t) => t.kind === "event" && !t.story);
   return (
     <div className="page stories">
-      <PageHeader eyebrow="藏园故事" title="一件与书有关的事，后来怎样了" lead={<p>访书、护书、校书、影印、公藏——十个有材料支撑的故事，邀请你亲手翻开线索。互动画面若为示意，会注明性质。</p>} />
+      <PageHeader eyebrow="藏园故事" title="一件与书有关的事，后来怎样了" lead={<p>访书、护书、校书、影印、公藏——十个有材料支撑的故事，逐幕放映，再由你排出先后。画面均为 AI 示意图，文字每一幕都可回到出处。</p>} />
       {err && <ErrorNote msg={err} />}
       <section className="container">
         {!list.length && !err && <Loading h={420} />}
-        <div className="story-grid">
-          {list.map((s, i) => (
-            <Reveal key={s.id} delay={(i % 3) * 0.08}>
-              <Link to={`/stories/${encodeURIComponent(s.id)}`} className={`story-card ${SAD_STORIES.has(s.id) ? "sad" : ""}`}>
-                <span className="story-no brush">{CN_NUM[s.rank] || s.rank}</span>
-                <div className="story-card-body">
-                  <span className="muted small">{s.date}{s.date_end ? ` — ${s.date_end}` : ""}</span>
-                  <h3>{s.title}</h3>
-                  <p>{s.one_liner || s.summary}</p>
-                  <div className="row">{s.themes.map((t) => <span key={t} className="seal qing">{t}</span>)}<span className="seal">{s.evidence_level}</span></div>
-                </div>
-                <span className="story-go">翻开 →</span>
-              </Link>
-            </Reveal>
-          ))}
+        <div className="story-grid poster-wall">
+          {list.map((s, i) => {
+            const poster = STORY_ART[s.id]?.poster;
+            return (
+              <Reveal key={s.id} delay={(i % 3) * 0.08} className={i === 0 ? "poster-hero" : ""}>
+                <TiltLink to={`/stories/${encodeURIComponent(s.id)}`} className={`story-card poster ${SAD_STORIES.has(s.id) ? "sad" : ""}`}>
+                  <div className="poster-img">
+                    {poster && <img src={artUrl(poster, i !== 0)} alt="" loading="lazy" />}
+                    {poster && <span className="poster-ai">AI 示意图</span>}
+                    <span className="story-no brush">{CN_NUM[s.rank] || s.rank}</span>
+                  </div>
+                  <div className="story-card-body">
+                    <span className="muted small">{s.date}{s.date_end ? ` — ${s.date_end}` : ""}</span>
+                    <h3>{s.title}</h3>
+                    <p>{s.one_liner || s.summary}</p>
+                    <div className="row">{s.themes.map((t) => <span key={t} className="seal qing">{t}</span>)}<span className="seal">{s.evidence_level}</span></div>
+                  </div>
+                  <span className="story-go">▶ 放映</span>
+                </TiltLink>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
       {!!others.length && (
@@ -76,7 +85,7 @@ export function StoryDetail() {
   }, [id]);
   usePageAgent(s ? {
     id: s.id, title: s.title,
-    tip: SAD_STORIES.has(s.id) ? "这是一个书遭遇险境的故事。慢慢翻，每张卡背后都有出处。" : "先翻开第一张线索卡，看看问题从哪里出现。",
+    tip: SAD_STORIES.has(s.id) ? "这是一个书遭遇险境的故事。点“开始放映”，每一幕下方都标着出处。" : "点“开始放映”，看看问题从哪里出现。用 ← → 键也能切换。",
     questions: [`${s.title}——这件事的原始依据是什么？`, `这个故事里还有哪些地方待核？`],
   } : {}, [s?.id]);
   if (err) return <div className="page"><ErrorNote msg={err} /></div>;
@@ -85,14 +94,7 @@ export function StoryDetail() {
   const next = all[(idx + 1) % (all.length || 1)];
   return (
     <div className="page story-detail">
-      <header className="container story-head">
-        <Link to="/stories" className="muted small">← 藏园故事</Link>
-        <motion.span className="story-head-no brush" initial={{ opacity: 0, scale: 1.6 }} animate={{ opacity: 0.12, scale: 1 }} transition={{ duration: 1.2 }}>{CN_NUM[s.rank] || ""}</motion.span>
-        <span className="eyebrow">重点故事 · 第{CN_NUM[s.rank] || s.rank}则</span>
-        <motion.h1 className="page-title" initial={{ opacity: 0, y: 24, filter: "blur(6px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 1 }}>{s.title}</motion.h1>
-        <div className="row"><span className="seal">{s.evidence_level}</span>{(s.frontmatter.themes || []).map((t: string) => <span key={t} className="seal qing">{t}</span>)}</div>
-      </header>
-      <Player story={s} />
+      <Player story={s} rankLabel={CN_NUM[s.rank] || String(s.rank)} />
       {!!s.images?.length && (
         <section className="container section-sm">
           <Reveal><span className="eyebrow">真实材料</span><h2 className="section-title brush">批校原件局部</h2></Reveal>
@@ -128,7 +130,7 @@ function shortAct(a: Act) {
   return t.length > 46 ? t.slice(0, 44) + "…" : t;
 }
 
-function Player({ story }: { story: Story }) {
+function Player({ story, rankLabel }: { story: Story; rankLabel: string }) {
   const acts = story.acts.slice(0, 6);
   const symbols = story.mode === "symbols";
   const sad = SAD_STORIES.has(story.id);
@@ -136,7 +138,8 @@ function Player({ story }: { story: Story }) {
   const charFor = (i: number) => (symbols ? acts[i].label.replace(/[^\u4e00-\u9fff]/g, "").slice(-2, -1) || acts[i].label[0]
     : acts.length === 4 ? ACT_CHAR[i] : CN_NUM[i + 1]);
   const { express, openChat } = useAgent();
-  const [flipped, setFlipped] = useState<boolean[]>(() => acts.map(() => false));
+  const [replay, setReplay] = useState(0);
+  const gameRef = useRef<HTMLElement>(null);
   const [stage, setStage] = useState<"acts" | "order" | "reveal">("acts");
   const [order, setOrder] = useState<number[]>([]);
   const [wrong, setWrong] = useState<number | null>(null);
@@ -151,10 +154,24 @@ function Player({ story }: { story: Story }) {
     if (arr.every((v, i) => v === i)) arr.reverse();
     return arr;
   }, [story.id, acts.length]);
-  const allFlipped = flipped.every(Boolean);
-  const nextIdx = flipped.findIndex((f) => !f);
+  useEffect(() => { setStage("acts"); setOrder([]); setQi(0); setQPicked(null); setScore(0); }, [story.id]);
 
-  useEffect(() => { setFlipped(acts.map(() => false)); setStage("acts"); setOrder([]); setQi(0); setQPicked(null); setScore(0); }, [story.id]);
+  const scrollTo = (target: HTMLElement | number) => {
+    const lenis = (window as any).__lenis;
+    if (lenis) lenis.scrollTo(target, { offset: typeof target === "number" ? 0 : -84, duration: 1.2 });
+    else if (typeof target === "number") window.scrollTo({ top: target, behavior: "smooth" });
+    else target.scrollIntoView({ behavior: "smooth" });
+  };
+  function toGame() {
+    setStage((s) => (s === "acts" ? "order" : s));
+    express("thinking", 2000);
+    requestAnimationFrame(() => gameRef.current && scrollTo(gameRef.current));
+  }
+  function replayCinema() {
+    setStage("acts"); setOrder([]); setQi(0); setScore(0);
+    setReplay((r) => r + 1);
+    scrollTo(0);
+  }
 
   function answer(i: number) {
     if (qPicked !== null) return;
@@ -167,17 +184,6 @@ function Player({ story }: { story: Story }) {
       if (qi + 1 >= quiz.length) setStage("reveal");
       else setQi(qi + 1);
     }, ok ? 900 : 1700);
-  }
-
-  function flip(i: number) {
-    if (flipped[i] || i !== nextIdx) {
-      if (!flipped[i]) express("encourage", 1800);
-      return;
-    }
-    setFlipped((f) => f.map((v, k) => (k === i ? true : v)));
-    if (i === sadAct && sad) express("sad", 5000);
-    else if (i === acts.length - 1) express(sad ? "encourage" : "happy", 3500);
-    else express("thinking", 1600);
   }
 
   function pick(i: number) {
@@ -198,41 +204,19 @@ function Player({ story }: { story: Story }) {
 
   if (!acts.length) return null;
   return (
-    <section className="player container">
+    <>
+    <StoryCinema key={`${story.id}-${replay}`} story={story} acts={acts} rankLabel={rankLabel} charFor={charFor} sadAct={sadAct} sad={sad} onFinish={toGame} />
+    <section className="player container" ref={gameRef}>
       <div className="player-steps">
-        {(symbols ? ["认识符号", "认一认批校", "看懂校勘"] : ["翻开线索", "排列先后", "史实揭晓"]).map((t, i) => (
+        {(symbols ? ["认识符号", "认一认批校", "看懂校勘"] : ["观看放映", "排列先后", "史实揭晓"]).map((t, i) => (
           <span key={t} className={["acts", "order", "reveal"].indexOf(stage) >= i ? "on" : ""}><b>{i + 1}</b>{t}</span>
         ))}
       </div>
       <AnimatePresence mode="wait">
         {stage === "acts" && (
-          <motion.div key="acts" exit={{ opacity: 0, y: -20 }}>
-            <p className="player-hint">{allFlipped ? `${acts.length} 张${symbols ? "符号卡" : "线索"}都翻开了。` : `按顺序点击，翻开第 ${nextIdx + 1} 张${symbols ? "符号卡：傅增湘用朱笔这样标记" : "线索卡"}。`}</p>
-            <div className="act-row" style={{ gridTemplateColumns: acts.length > 4 ? `repeat(${Math.min(acts.length, 5)}, 1fr)` : undefined }}>
-              {acts.map((a, i) => (
-                <motion.div key={i} className={`act-card ${flipped[i] ? "flipped" : ""} ${i === nextIdx ? "next" : ""} ${sad && i === sadAct ? "sad" : ""} ${symbols ? "symbol" : ""}`}
-                  onClick={() => flip(i)} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 * i, duration: 0.7 }}>
-                  <div className="act-inner">
-                    <div className="act-front">
-                      <span className="act-char brush">{charFor(i)}</span>
-                      <span className="act-label">{a.label}</span>
-                      {i === nextIdx && <span className="act-tap">点击翻开</span>}
-                    </div>
-                    <div className="act-back">
-                      <span className="act-char-sm brush">{charFor(i)}</span>
-                      {symbols && a.images?.[0] && <img className="act-img" src={kbAsset(`images/thumbs/${a.images[0]}.jpg`)} alt={a.label} />}
-                      <Markdown text={a.text} titles={story.link_titles} />
-                      {a.source && a.source !== "—" && <div className="act-src"><Markdown text={`出处：${a.source}`} titles={story.link_titles} /></div>}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <div className="center" style={{ marginTop: 28 }}>
-              <button className="btn solid" disabled={!allFlipped} onClick={() => { setStage("order"); express("thinking", 2000); }}>
-                {symbols ? "下一步：认一认真实批校 →" : "下一步：排一排先后 →"}
-              </button>
-            </div>
+          <motion.div key="acts" className="center player-wait" exit={{ opacity: 0, y: -20 }}>
+            <p className="player-hint">{symbols ? `先在上方看完 ${acts.length} 种校勘符号，再用真实批校局部考考自己。` : `先在上方看完 ${acts.length} 幕放映，再把情节按先后排一排。`}</p>
+            <button className="btn" onClick={toGame}>{symbols ? "跳过放映，直接认批校 →" : "跳过放映，直接排序 →"}</button>
           </motion.div>
         )}
         {stage === "order" && symbols && quiz[qi] && (
@@ -281,7 +265,7 @@ function Player({ story }: { story: Story }) {
             {symbols && <p className="muted small">提醒：宋本与明本不同，并不自动等于宋本正确——校勘要据证据判断。</p>}
             <p className="muted small">证据层级：{story.evidence_level}。故事的每一幕都能回到原文，点击上方卡片中的出处即可查看。</p>
             <div className="row center-row">
-              <button className="btn" onClick={() => { setStage("acts"); setOrder([]); }}>再看一遍</button>
+              <button className="btn" onClick={replayCinema}>再看一遍放映</button>
               <button className="btn zhu" onClick={() => openChat(`关于“${story.title}”，原始材料是怎么记载的？`)}>问小傅：依据是什么？</button>
               <Link className="btn solid" to="/cases">去史料侦探 →</Link>
             </div>
@@ -289,5 +273,6 @@ function Player({ story }: { story: Story }) {
         )}
       </AnimatePresence>
     </section>
+    </>
   );
 }

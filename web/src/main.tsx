@@ -6,6 +6,7 @@ import { Providers } from "./lib/store";
 import "./styles/global.css";
 import "./styles/components.css";
 import "./styles/pages.css";
+import "./styles/cinema.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

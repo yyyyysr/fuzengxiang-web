@@ -6,6 +6,7 @@ import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal } from "../compone
 import { api, kbAsset, stripLinks, type TimelineItem, type WikiPage } from "../lib/api";
 import { bullets, parseTable, yearOf } from "../lib/md";
 import { useAgent, usePageAgent } from "../lib/store";
+import { LifeCinema } from "./LifeCinema";
 
 const THEMES = ["藏书", "校书", "影印", "图书馆", "教育", "交游", "访书", "护书", "捐赠", "生平"];
 const CONTRIB_ICON = ["访", "鉴", "校", "传", "教"];
@@ -20,7 +21,7 @@ export function Life() {
   }, []);
   usePageAgent({
     id: "傅增湘", title: "傅增湘",
-    tip: "年谱可以按“藏书、校书、教育、图书馆”筛选。点开节点能看到出处，有故事的节点还能直接进入故事。",
+    tip: "年谱分六个篇章，滚轮一下翻一年。想按“藏书、校书、教育”筛选，切到列表模式就行。",
     questions: ["傅增湘为什么从教育总长任上辞职？", "傅增湘一生校了多少书？数字有没有分歧？"],
   });
   if (err) return <div className="page"><ErrorNote msg={err} /></div>;
@@ -33,9 +34,30 @@ export function Life() {
         side={<div className="portrait-pair"><img src={kbAsset("images/thumbs/img-0069.jpg")} alt="藏园校书图（徐悲鸿绘）" /><img src={kbAsset("images/thumbs/img-0009.jpg")} alt="傅增湘像" /></div>}
       />
       {fu ? <Intro fu={fu} /> : <div className="container"><Loading /></div>}
-      <Timeline items={tl} />
+      <Chronicle items={tl} />
       {fu && <Disputes fu={fu} />}
     </div>
+  );
+}
+
+function Chronicle({ items }: { items: TimelineItem[] }) {
+  const [mode, setMode] = useState<"cinema" | "list">("cinema");
+  return (
+    <>
+      <section className="container chron-head">
+        <Reveal className="center">
+          <span className="eyebrow">互动年谱 · 流光</span>
+          <h2 className="section-title brush">七十八年，六个篇章</h2>
+          <CloudDivider />
+          <p className="muted">从江安少年到双鉴楼主人。滚动翻阅每一年；想快速浏览或按主题筛选，可切换到列表。</p>
+          <div className="seg-toggle" role="tablist">
+            <button role="tab" aria-selected={mode === "cinema"} className={mode === "cinema" ? "on" : ""} onClick={() => setMode("cinema")}>影院模式</button>
+            <button role="tab" aria-selected={mode === "list"} className={mode === "list" ? "on" : ""} onClick={() => setMode("list")}>列表模式</button>
+          </div>
+        </Reveal>
+      </section>
+      {mode === "cinema" ? <LifeCinema items={items} /> : <Timeline items={items} />}
+    </>
   );
 }
 
@@ -100,7 +122,6 @@ function Timeline({ items }: { items: TimelineItem[] }) {
   return (
     <section className="section timeline-sec">
       <div className="container">
-        <Reveal className="center"><span className="eyebrow">互动年谱</span><h2 className="section-title brush">按年寻迹</h2></Reveal>
         <div className="tl-filters">
           <button className={`chip ${!theme ? "active" : ""}`} onClick={() => setTheme(null)}>全部 {items.length}</button>
           {THEMES.filter((t) => counts[t]).map((t) => (
