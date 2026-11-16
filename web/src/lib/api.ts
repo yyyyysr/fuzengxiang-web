@@ -125,7 +125,7 @@ export function stripLinks(s: string) {
 
 export const TYPE_LABEL: Record<string, string> = {
   person: "人物", book: "书籍", work: "著述·项目", place: "地点", org: "机构", event: "事件", concept: "概念",
-  story: "故事", case: "疑案", synthesis: "综述", source: "文献", meta: "说明",
+  story: "故事", case: "疑案", synthesis: "综述", source: "文献", meta: "说明", guide: "网站导览",
 };
 
 export function routeFor(id: string, type?: string) {

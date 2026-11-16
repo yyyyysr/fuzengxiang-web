@@ -5,7 +5,7 @@ import { ErrorNote, Loading, Reveal } from "../components/ui";
 import { api, routeFor, TYPE_LABEL, type WikiPage } from "../lib/api";
 import { useAgent, usePageAgent } from "../lib/store";
 
-const SKIP_FM = new Set(["id", "type", "title", "summary", "aliases", "ambiguous_aliases", "updated", "status", "relations", "sources", "mention_aliases"]);
+const SKIP_FM = new Set(["id", "type", "title", "summary", "aliases", "ambiguous_aliases", "updated", "status", "relations", "sources", "mention_aliases", "route"]);
 
 export function WikiView() {
   const { id = "" } = useParams();
@@ -13,7 +13,10 @@ export function WikiView() {
   const [err, setErr] = useState("");
   const { openChat } = useAgent();
   useEffect(() => { setP(null); setErr(""); api<WikiPage>(`/wiki/${encodeURIComponent(id)}`).then(setP).catch((e) => setErr(e.message)); }, [id]);
-  usePageAgent(p ? { id: p.id, title: p.title, tip: `这是知识库中的《${p.title}》。正文里朱色虚线的链接可以点开出处原文。`, questions: [`用三句话概括《${p.title}》`, `关于${p.title}，有哪些说法还待核？`] } : {}, [p?.id]);
+  const module = p?.type === "guide" ? (p.id === "网站导览" ? "这个网站" : p.aliases?.[0] || p.title.split("：")[0]) : "";
+  usePageAgent(!p ? {} : p.type === "guide"
+    ? { id: p.id, title: p.title, tip: "这是网站的玩法说明。看完可以点“打开这个栏目”直接体验，有不清楚的地方也可以问我。", questions: [`${module}怎么用？`, `${module}有哪些功能？`] }
+    : { id: p.id, title: p.title, tip: `这是知识库中的《${p.title}》。正文里朱色虚线的链接可以点开出处原文。`, questions: [`用三句话概括《${p.title}》`, `关于${p.title}，有哪些说法还待核？`] }, [p?.id]);
   if (err) return <div className="page"><ErrorNote msg={err} /></div>;
   if (!p) return <div className="page narrow"><Loading h={500} /></div>;
   if (p.type === "story") return <Navigate to={`/stories/${encodeURIComponent(p.id)}`} replace />;
@@ -32,6 +35,9 @@ export function WikiView() {
           </div>
           <h1 className="wiki-title">{p.title}</h1>
           {p.summary && <p className="wiki-summary">{p.summary}</p>}
+          {p.type === "guide" && typeof fm.route === "string" && fm.route !== "/" && (
+            <Link className="btn small solid" to={fm.route} style={{ marginBottom: 18 }}>打开这个栏目 →</Link>
+          )}
           <Reveal><Markdown text={body} titles={p.link_titles} className="wiki-md" /></Reveal>
         </article>
         <aside className="wiki-side">

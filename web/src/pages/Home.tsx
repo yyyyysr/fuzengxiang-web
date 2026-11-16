@@ -303,7 +303,7 @@ function Footer() {
           <p className="muted small">傅增湘藏书家智能体 · 内容依据整理入库的论文、图书摘录、档案与图像，史实以原文为准。小傅是当代导览角色，不代表傅增湘本人发言。</p>
         </div>
         <div className="footer-links">
-          <Link to="/search">全站检索</Link><Link to="/wiki/overview">知识库综述</Link><Link to="/wiki/证据层级">证据层级说明</Link><Link to="/gallery">图像长廊</Link>
+          <Link to="/wiki/网站导览">网站导览</Link><Link to="/search">全站检索</Link><Link to="/wiki/overview">知识库综述</Link><Link to="/wiki/证据层级">证据层级说明</Link><Link to="/gallery">图像长廊</Link>
         </div>
       </div>
     </footer>

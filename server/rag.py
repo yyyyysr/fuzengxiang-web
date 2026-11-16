@@ -22,13 +22,50 @@ STOP = {"什么", "怎么", "为什么", "如何", "哪些", "哪个", "哪里",
         "情况", "怎样", "多少", "几个", "傅增湘", "傅增", "增湘", "是怎么", "怎么样"}
 SAD_WORDS = ("失火", "火灾", "失窃", "被盗", "水灾", "大水", "散出", "散佚", "逝世", "去世", "劫", "毁", "中风")
 
+# Questions about the website itself ("史料侦探怎么玩") are answered from wiki/guide pages.
+GUIDE_HINTS = ("玩法", "怎么玩", "怎么用", "如何用", "如何使用", "使用说明", "功能", "栏目", "模块", "板块", "页面", "网站", "本站",
+               "入口", "怎么操作", "如何操作", "规则", "导览", "能做什么", "有什么用", "怎么看", "怎么翻", "怎么打开", "是谁", "有哪些", "介绍")
+GUIDE_MODULES = (  # checked in order; a matched name is removed so 认识傅增湘 does not also hit 傅增湘
+    ("认识傅增湘", "认识傅增湘栏目"), ("藏园故事", "藏园故事玩法"), ("史料侦探", "史料侦探玩法"), ("双鉴书架", "双鉴书架玩法"),
+    ("书林往来", "书林往来玩法"), ("藏园图像", "藏园图像玩法"), ("全站检索", "全站检索玩法"), ("检书", "全站检索玩法"),
+    ("年谱", "认识傅增湘栏目"), ("小傅", "小傅问答玩法"), ("检索", "全站检索玩法"), ("搜索", "全站检索玩法"),
+    ("放映", "藏园故事玩法"), ("排序", "藏园故事玩法"), ("卷宗", "史料侦探玩法"), ("证据卡", "史料侦探玩法"),
+    ("关系图", "书林往来玩法"), ("书架", "双鉴书架玩法"), ("图像", "藏园图像玩法"),
+)
+SITE_WORDS = ("网站", "本站", "栏目", "模块", "板块", "导览")
+
 SYSTEM_PROMPT = """你是“小傅”，傅增湘藏书家智能体网站的当代导览伙伴。你不是傅增湘本人，不用第一人称冒充他。
 回答规则：
 1. 只依据下方【资料】作答，先给结论，再给依据；每个事实句后用 [编号] 标注出处，编号对应资料条目。
 2. 区分证据层级：原始材料明载（题跋、书札、日记、档案）／研究者推断（论文考证）／现有材料不足。必要时在句末注明。
 3. 区分作品、版本与具体藏本；区分旧藏、经眼、校勘、题跋、借阅、影印、捐赠，不把“经眼”说成“旧藏”。
 4. 不补写心理活动，不推测未记载的结局；资料不足时直接说缺少什么材料，并建议读者查看哪条证据。
-5. 用简体中文，语气亲切简洁，面向对古籍感兴趣的学生和普通读者，一般不超过 300 字。"""
+5. 用简体中文，语气亲切简洁，面向对古籍感兴趣的学生和普通读者，一般不超过 300 字。
+6. 标为“网站说明”的资料介绍本网站的栏目与操作。回答“怎么玩、怎么用、有什么功能”时，按其中的步骤分条说明，照用界面上的按钮名称，同样标注 [编号]；这类回答不必区分证据层级，可适当展开到 400 字，不要描述资料里没有的功能。"""
+
+
+def guide_digest(body: str, limit: int = 18) -> list[str]:
+    """Headings, list items and table rows of a guide page, with wiki links reduced to their labels."""
+    lines = body.splitlines()
+    out = []
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if s.startswith("## "):
+            out += ["", f"**{s[3:]}**"]  # blank line so the heading does not merge into the previous list item
+        elif re.match(r"^(\d+\.|-)\s", s):
+            out.append(s)
+        elif s.startswith("|") and not re.fullmatch(r"[|\-:\s]+", s):
+            nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            if re.fullmatch(r"[|\-:\s]+", nxt):
+                continue  # header row
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            out.append(f"- {cells[0]}：{cells[1]}" if len(cells) > 1 else f"- {cells[0]}")
+        if sum(1 for x in out if x) >= limit:
+            break
+    while out and (not out[-1] or out[-1].startswith("**")):
+        out.pop()  # a heading cut off from its items
+    unlink = lambda t: re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", re.sub(r"\[\[([^\]|#]+)\]\]", r"\1", t))  # noqa: E731
+    return [unlink(x) for x in out]
 
 
 class Dense:
@@ -121,9 +158,24 @@ class RAG:
         title = fold(p["title"])
         inner = re.findall(r"《([^》]+)》", title)
         core = inner or [re.sub(r"[（(].*?[）)]", "", title).strip()]
-        if p["type"] in ("story", "case", "event"):
+        if p["type"] in ("story", "case", "event", "guide"):
             return core[:1] if inner else []
         return [c for c in core if len(c) >= 2][:2]
+
+    def guide_pages(self, question: str) -> list[str]:
+        """Guide pages for a how-to question about the site; [] when the question is about history."""
+        q = fold(question)
+        if not any(h in q for h in GUIDE_HINTS):
+            return []
+        hits = []
+        for name, pid in GUIDE_MODULES:
+            if name in q and pid in self.kb.pages:
+                q = q.replace(name, " ")
+                if pid not in hits:
+                    hits.append(pid)
+        if not hits and any(w in fold(question) for w in SITE_WORDS) and "网站导览" in self.kb.pages:
+            hits.append("网站导览")
+        return hits
 
     def retrieve(self, question: str, context_page: str | None = None) -> dict:
         result = {}
@@ -144,9 +196,18 @@ class RAG:
 
         t0 = time.perf_counter()
         entities = self.kb.spot_entities(question)
-        if context_page and context_page in self.kb.pages and context_page not in entities:
+        is_guide = lambda e: self.kb.pages[e]["type"] == "guide"  # noqa: E731
+        guides = self.guide_pages(question)
+        history = [e for e in entities if not is_guide(e) and e != "傅增湘"]
+        # A how-to question names a module and nothing historical; "藏园故事里《乐府诗集》失火那天书在哪里"
+        # mentions a module but asks about a book, so it stays a history question.
+        site = bool(guides) and not history
+        if not site and entities and all(is_guide(e) for e in entities) and not self.terms(question, entities):
+            site, guides = True, entities  # the question is just a guide alias, e.g. "影院模式"
+        entities = guides if site else [e for e in entities if not is_guide(e)]
+        if context_page and context_page in self.kb.pages and context_page not in entities and not site:
             entities.append(context_page)
-        yield step("entity_recognition", "识别问题中的实体", question,
+        yield step("entity_recognition", "识别问题中的实体" + ("（网站使用问题）" if site else ""), question,
                    [self.kb.pages[e]["title"] for e in entities] or ["未识别到知识库实体"], t0, len(entities))
 
         t0 = time.perf_counter()
@@ -175,7 +236,7 @@ class RAG:
         wiki_hits = []
         if query_terms:
             for i, w in enumerate(self.scored(con, "wiki_pages", "page_id", query_terms, 30, ", type")):
-                if w["row"][2] not in ("meta",):
+                if w["row"][2] != "meta" and (site or w["row"][2] != "guide"):
                     add(("wiki", w["id"]), i, 1.6 if w["row"][2] != "source" else 0.5)
                     wiki_hits.append(w["id"])
         yield step("wiki_search", "检索知识页（LLM Wiki）", query_terms,
@@ -183,15 +244,20 @@ class RAG:
 
         t0 = time.perf_counter()
         chunk_hits = []
-        if query_terms:
+        if query_terms and not site:
             for i, c in enumerate(self.scored(con, "chunks", "chunk_id", query_terms, 40, ", kind")):
                 add(("chunk", c["id"]), i, 0.4 if c["row"][2] == "notes" else 1.4)
                 chunk_hits.append(c["id"])
         yield step("corpus_search", "检索原文段落（IDF 加权全文检索）", query_terms,
+                   ["网站使用问题，按网站说明作答，跳过史料原文"] if site else
                    list(dict.fromkeys(self._doc_label(c) for c in chunk_hits[:12]))[:6], t0, len(chunk_hits))
 
         t0 = time.perf_counter()
-        dense = self.dense.search(question)
+        def keep(d):
+            if d["kind"] != "wiki":
+                return not site
+            return site or self.kb.pages.get(d["id"], {}).get("type") != "guide"
+        dense = [d for d in self.dense.search(question) if keep(d)]
         for i, d in enumerate(dense):
             add((d["kind"], d["id"]), i, 1.2)
         yield step("vector_search", "语义向量召回", question,
@@ -201,8 +267,8 @@ class RAG:
         # The wiki already links its claims to source paragraphs: pull the paragraphs
         # cited by the best wiki pages in as evidence (bridges wording gaps like 水灾/大水).
         t0 = time.perf_counter()
-        top_wiki = [k[1] for k in sorted(fused, key=fused.get, reverse=True)
-                    if k[0] == "wiki" and k[1] in self.kb.pages and k[1] != "傅增湘"][:2]
+        top_wiki = [] if site else [k[1] for k in sorted(fused, key=fused.get, reverse=True)
+                                    if k[0] == "wiki" and k[1] in self.kb.pages and k[1] != "傅增湘"][:2]
         expanded = []
         for pid in top_wiki:
             for j, (doc, bid) in enumerate(self.cited_blocks(pid)[:4]):
@@ -211,7 +277,7 @@ class RAG:
                     add(("chunk", r[0]), j, 2.0)
                     expanded.append(f"{self._doc_label(r[0])} #{bid}")
         yield step("citation_expand", "沿知识页出处补入原文", [self.kb.pages[p]["title"] for p in top_wiki],
-                   expanded[:6] or ["（无出处链接）"], t0, len(expanded))
+                   expanded[:6] or ["（网站说明无需补入原文）" if site else "（无出处链接）"], t0, len(expanded))
 
         ranked = sorted(fused, key=fused.get, reverse=True)
         wiki_ids = [k[1] for k in ranked if k[0] == "wiki" and k[1] in self.kb.pages][:4]
@@ -231,14 +297,14 @@ class RAG:
             p = self.kb.pages[pid]
             body = re.sub(r"\n{2,}", "\n", p["body"])
             sources.append({"n": len(sources) + 1, "kind": "wiki", "id": pid, "title": p["title"], "type": p["type"],
-                            "summary": p["summary"], "text": body[:1400]})
+                            "summary": p["summary"], "text": body[:3200 if p["type"] == "guide" else 1400]})
         for c in chunks:
             sources.append({"n": len(sources) + 1, "kind": "chunk", "id": c["doc_id"], "bid": c["bid"], "page": c["page"],
                             "title": c["title"], "authors": c["authors"], "citation": c["citation"],
                             "heading": c["heading"], "text": c["text"][:900]})
         yield ("tool", {"tool": "rerank", "label": "RRF 融合排序，组装上下文", "input": f"{len(fused)} 个候选",
                         "output": [f"[{s['n']}] {s['title']}" for s in sources], "count": len(sources), "ms": 0})
-        yield ("result", {"entities": entities, "terms": terms, "sources": sources, "dense": self.dense.ready})
+        yield ("result", {"entities": entities, "terms": terms, "sources": sources, "dense": self.dense.ready, "site": site})
 
     # ---- answering -------------------------------------------------------
     @staticmethod
@@ -254,7 +320,8 @@ class RAG:
         ctx = []
         for s in sources:
             if s["kind"] == "wiki":
-                ctx.append(f"[{s['n']}] wiki《{s['title']}》：{s['text']}")
+                label = "网站说明" if s.get("type") == "guide" else "wiki"
+                ctx.append(f"[{s['n']}] {label}《{s['title']}》：{s['text']}")
             else:
                 who = "、".join(s.get("authors") or [])
                 ctx.append(f"[{s['n']}] 原文《{s['title']}》{('（' + who + '）') if who else ''}"
@@ -272,6 +339,14 @@ class RAG:
         if not sources:
             return ("我在知识库里没有找到和这个问题直接相关的记载。可以换个说法，或者告诉我具体的人名、书名、年份，"
                     "比如“宋本《扬子法言》是怎么合璧的？”")
+        if retrieval.get("site"):
+            top = sources[0]
+            lines = [f"{top['summary']} [{top['n']}]"] + guide_digest(top["text"])
+            more = [s for s in sources[1:] if s["kind"] == "wiki" and s.get("type") == "guide"][:2]
+            if more:
+                lines += ["", "相关说明：" + "、".join(f"《{s['title']}》[{s['n']}]" for s in more)]
+            lines.append("\n（当前未接入大模型，以上摘自网站说明页；点编号可查看全文。）")
+            return "\n".join(lines)
         keys = [fold(k) for k in retrieval["terms"]] + [n for e in retrieval["entities"]
                                                         if e in self.kb.pages and e != "傅增湘" for n in self.entity_terms(e)]
         lines = []
@@ -323,7 +398,9 @@ class RAG:
                 mode = "extractive"
                 yield {"event": "delta", "data": {"text": self.extractive_answer(question, retrieval)}}
         else:
-            plan = (f"未接入大模型，改用摘编模式：先取排名最高的知识页摘要作结论，"
+            plan = (f"未接入大模型，改用摘编模式。这是网站使用问题，直接摘取《{sources[0]['title']}》的要点和操作步骤。"
+                    if retrieval.get("site") and sources else
+                    f"未接入大模型，改用摘编模式：先取排名最高的知识页摘要作结论，"
                     f"再从 {sum(1 for s in sources if s['kind'] == 'chunk')} 段原文中挑出含检索词"
                     f"「{'、'.join(retrieval['terms'][:4]) or '实体名'}」的句子作依据，并标注出处编号。")
             for i in range(0, len(plan), 10):
