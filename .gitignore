@@ -1,4 +1,5 @@
 .env
+.venv/
 .shots/
 web/node_modules/
 web/dist/
