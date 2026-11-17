@@ -12,7 +12,7 @@ from config import EXPORT, INDEX
 
 CC = opencc.OpenCC("t2s")
 LINK = re.compile(r"\[\[([^\]|#\\]+)(?:#(\^?[^\]|\\]+))?(?:\\?\|([^\]]+))?\]\]")
-DOC_ID = re.compile(r"^(cnki|wanfang|vip|book|web|img)-\d{4}$")
+DOC_ID = re.compile(r"^(cnki|wanfang|vip|book|web|img|sup)-\d{4}$")
 
 
 def fold(s: str) -> str:
@@ -34,7 +34,18 @@ class KB:
         self.timeline = _load("wiki/timeline.json")
         self.graph = _load("wiki/graph.json")
         self.alias_index = self._build_alias_index()
+        self.mention_totals = self._mention_totals()
         _doc.cache_clear()
+
+    def _mention_totals(self) -> dict[str, tuple[int, int]]:
+        """entity id -> (occurrences, documents) over the deduplicated corpus."""
+        try:
+            con = connect()
+            rows = con.execute("SELECT entity_id, SUM(count), COUNT(DISTINCT doc_id) FROM mentions GROUP BY entity_id").fetchall()
+            con.close()
+        except sqlite3.Error:
+            return {}
+        return {r[0]: (int(r[1]), int(r[2])) for r in rows}
 
     # ---- helpers -------------------------------------------------------
     def _build_alias_index(self) -> list[tuple[str, str]]:
@@ -107,12 +118,15 @@ class KB:
         secs = split_sections(p["body"])
         acts = []
         mode = "acts"
-        for row in first_table(secs, ("情节卡", "情节卡（四幕）", "情节卡（待补全）", "时间线")):
+        for row in first_table(secs, ("情节（四幕）", "情节", "情节卡", "情节卡（四幕）", "情节卡（待补全）", "时间线")):
+            if "内容" in row:
+                acts.append({"label": row.get("标题") or row.get("幕", ""), "text": row["内容"], "source": row.get("出处", "")})
+                continue
             vals = list(row.values())
             acts.append({"label": vals[0], "text": vals[1] if len(vals) > 1 else "", "source": vals[2] if len(vals) > 2 else ""})
         if not acts:
             # Hands-on stories (e.g. reading collation marks) carry a 符号 table instead of plot acts.
-            for row in first_table(secs, ("校勘方法（已核）", "校勘方法")):
+            for row in first_table(secs, ("校勘方法", "校勘方法（已核）")):
                 vals = list(row.values())
                 cite = next((m.group(0) for m in LINK.finditer(p["body"]) if m.group(2)), "")
                 acts.append({"label": vals[0], "text": f"{vals[1]}　例：{vals[2]}" if len(vals) > 2 and vals[2] != "见原文" else vals[1],
@@ -120,9 +134,26 @@ class KB:
             mode = "symbols" if acts else mode
         fm = p["frontmatter"]
         return {**self.page(sid), "rank": fm.get("story_rank"), "one_liner": one_liner(p["body"]), "acts": acts, "mode": mode,
-                "operation": section_text(secs, ("读者操作", "读者操作建议")),
-                "pending": section_text(secs, ("待核",)), "evidence_level": fm.get("evidence_level", ""),
+                "people_notes": section_text(secs, ("故事里的人", "文中人物")),
+                "notes": section_text(secs, ("史料小注",)), "full_text": section_text(secs, ("故事全文",)),
                 "images": [img for img in self.images if img["id"] in (fm.get("images") or [])]}
+
+    def tales(self) -> list[dict]:
+        """Datable events told as short vernacular stories (the 藏园故事 page lists those without a feature story)."""
+        out = []
+        for p in self.by_type("event"):
+            fm = p["frontmatter"]
+            secs = split_sections(p["body"])
+            story = secs.get("故事", "")
+            if fm.get("story") or not story:
+                continue
+            teaser = re.sub(r"（[^）]*\[\[[^）]*）", "", story)
+            teaser = re.sub(r"\s+", "", LINK.sub(lambda m: m.group(3) or self.link_label(m.group(1)), teaser))
+            out.append({"id": p["id"], "title": fm.get("tale") or p["title"], "event": p["title"], "date": str(fm.get("date", "")),
+                        "teaser": teaser[:96] + ("……" if len(teaser) > 96 else ""),
+                        "story": story, "people": secs.get("文中人物", ""),
+                        "link_titles": {t: self.link_label(t) for t in set(p["links"]) | set(p.get("source_refs", []))}})
+        return sorted(out, key=lambda t: t["date"])
 
     def cases(self) -> list[dict]:
         out = []
@@ -137,15 +168,23 @@ class KB:
         if not p or p["type"] != "case":
             return None
         secs = split_sections(p["body"])
-        cards = [list(r.values()) for r in first_table(secs, ("证据卡", "数字卡（每个数字都要标注时点与范围）", "数字卡"))]
-        headers = list(first_table(secs, ("证据卡", "数字卡（每个数字都要标注时点与范围）", "数字卡"))[0].keys()) if cards else []
+        rows = first_table(secs, ("史料卡", "证据卡", "数字卡（每个数字都要标注时点与范围）", "数字卡"))
+        numbers = bool(rows) and "数字" in rows[0]
+        evidence = []
+        for row in rows:
+            get = lambda *keys: next((row[k] for k in keys if row.get(k)), "")  # noqa: E731
+            evidence.append({"key": get("卡", "编号", "数字"), "quote": get("史料", "原文", "原文摘录"), "text": get("说明", "内容"),
+                             "points": get("指向").strip().upper()[:1], "reading": get("研究者解读", "支持"), "source": get("出处"),
+                             "when": get("时点"), "scope": get("范围")})
         fm = p["frontmatter"]
-        conclusion = section_text(secs, ("结论", "当前结论", "结论（研究者考证）"))
-        return {**self.page(cid), "question": fm.get("question", ""), "hypotheses": fm.get("hypotheses", []),
-                "case_status": fm.get("status", ""), "card_headers": headers, "cards": cards,
+        hyps = fm.get("hypotheses", [])
+        labels = fm.get("hypothesis_labels") or [re.split(r"[：:，,]", h)[0][:12] for h in hyps]
+        return {**self.page(cid), "question": fm.get("question", ""), "hypotheses": hyps, "labels": labels,
+                "case_status": fm.get("status", ""), "numbers": numbers, "evidence": evidence,
+                "background": section_text(secs, ("案情", "案情背景")),
                 "hypothesis_text": section_text(secs, ("竞争解释",)), "hints": section_text(secs, ("推理提示", "推理步骤")),
-                "conclusion": conclusion, "why": section_text(secs, ("为什么旧说看似合理",)),
-                "pending": section_text(secs, ("待核",))}
+                "conclusion": section_text(secs, ("结论", "当前结论", "结论（研究者考证）")), "why": section_text(secs, ("为什么旧说看似合理",)),
+                "open_questions": section_text(secs, ("仍待查证", "待核"))}
 
     def books(self) -> list[dict]:
         out = []
@@ -153,7 +192,7 @@ class KB:
             fm = p["frontmatter"]
             rels = fm.get("relations") or []
             out.append({**self.page_card(p["id"]), "work": fm.get("work", ""), "edition": fm.get("edition", ""),
-                        "current_holder": fm.get("current_holder", ""), "relations": rels,
+                        "current_holder": fm.get("current_holder", ""), "category": fm.get("category", ""), "relations": rels,
                         "relation_types": sorted({r.get("type") for r in rels if isinstance(r, dict)}),
                         "images": fm.get("images", [])})
         return out
@@ -168,20 +207,39 @@ class KB:
         return out
 
     def network(self) -> dict:
+        """People, books, projects, institutions and places with three kinds of edges:
+        `relation` (structured relations with evidence), `event` (named together in one event or story page)
+        and `link` (one entity page cites the other)."""
         nodes = {}
-        edges = []
-        for p in self.by_type("person") + self.by_type("book") + self.by_type("org") + self.by_type("place") + self.by_type("work"):
-            nodes[p["id"]] = {"id": p["id"], "type": p["type"], "title": p["title"], "summary": p["summary"]}
+        for t in ("person", "book", "work", "org", "place"):
+            for p in self.by_type(t):
+                nodes[p["id"]] = {"id": p["id"], "type": t, "title": p["title"], "summary": p["summary"],
+                                  "mentions": p.get("mention_total", 0), "docs": p.get("mention_doc_count", 0)}
+        edges, pairs = [], set()
         for e in self.graph["edges"]:
-            if e.get("kind") == "relation" and e["source"] in nodes and e["target"] in nodes:
+            if e.get("kind") == "relation" and e["source"] in nodes and e["target"] in nodes and e["source"] != e["target"]:
                 edges.append(e)
-        linked = {e["source"] for e in edges} | {e["target"] for e in edges}
-        for p in self.by_type("person"):
+                pairs.add(frozenset((e["source"], e["target"])))
+        for p in self.by_type("event") + self.by_type("story"):
+            ents = [t for t in dict.fromkeys(p["links"]) if t in nodes][:7]
+            date = str(p["frontmatter"].get("date", "") or "")
+            for i, a in enumerate(ents):
+                for b in ents[i + 1:]:
+                    key = frozenset((a, b))
+                    if key in pairs:
+                        continue
+                    pairs.add(key)
+                    edges.append({"source": a, "target": b, "type": "同见一事", "kind": "event", "label": p["title"], "date": date,
+                                  "via": p["id"], "via_type": p["type"], "evidence": []})
+        for p in self.pages.values():
+            if p["id"] not in nodes:
+                continue
             for tgt in p["links"]:
-                if tgt in nodes and tgt != p["id"] and nodes[tgt]["type"] == "person":
-                    if not any({e["source"], e["target"]} == {p["id"], tgt} for e in edges):
-                        edges.append({"source": p["id"], "target": tgt, "type": "提及", "kind": "link", "label": "", "date": "", "evidence": []})
-                        linked |= {p["id"], tgt}
+                key = frozenset((p["id"], tgt))
+                if tgt in nodes and tgt != p["id"] and key not in pairs:
+                    pairs.add(key)
+                    edges.append({"source": p["id"], "target": tgt, "type": "提及", "kind": "link", "label": "", "date": "", "evidence": []})
+        linked = {e["source"] for e in edges} | {e["target"] for e in edges}
         return {"nodes": [n for n in nodes.values() if n["id"] in linked or n["type"] == "person"], "edges": edges}
 
     def doc(self, doc_id: str) -> dict | None:

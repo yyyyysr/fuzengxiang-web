@@ -21,7 +21,7 @@ export function Life() {
   }, []);
   usePageAgent({
     id: "傅增湘", title: "傅增湘",
-    tip: "年谱分六个篇章，滚轮一下翻一年。想按“藏书、校书、教育”筛选，切到列表模式就行。",
+    tip: "先看看傅增湘的五大主要贡献，再往下翻年谱：六个篇章，滚轮一下翻一个时刻。想按“藏书、校书、教育”筛选，切到列表模式就行。",
     questions: ["傅增湘为什么从教育总长任上辞职？", "傅增湘一生校了多少书？数字有没有分歧？"],
   });
   if (err) return <div className="page"><ErrorNote msg={err} /></div>;
@@ -62,15 +62,14 @@ function Chronicle({ items }: { items: TimelineItem[] }) {
 }
 
 function Intro({ fu }: { fu: WikiPage }) {
-  const quick = bullets(fu.sections["三十秒介绍"] || "");
-  const contrib = parseTable(fu.sections["贡献五项"] || "").slice(1);
+  const quick = bullets(fu.sections["生平概览"] || fu.sections["生平速览"] || fu.sections["三十秒介绍"] || "");
+  const contrib = parseTable(fu.sections["五大主要贡献"] || fu.sections["贡献五项"] || "").slice(1);
   const [flip, setFlip] = useState<number | null>(null);
   return (
     <>
       <section className="container section-sm">
         <Reveal className="quick-intro paper-card card">
           <div className="quick-lead">
-            <span className="seal solid">三十秒</span>
             <Markdown text={fu.sections["_intro"]?.replace(/^#.*\n/, "") || ""} titles={fu.link_titles} />
           </div>
           <div className="quick-grid">
@@ -83,7 +82,7 @@ function Intro({ fu }: { fu: WikiPage }) {
         </Reveal>
       </section>
       <section className="container section-sm">
-        <Reveal className="center"><span className="eyebrow">贡献五项</span><h2 className="section-title brush"><SplitText text="不以称号代替事例" inView /></h2><CloudDivider /></Reveal>
+        <Reveal className="center"><span className="eyebrow">访 · 鉴 · 校 · 传 · 教</span><h2 className="section-title brush"><SplitText text="傅增湘的五大主要贡献" inView stagger={0.05} /></h2><CloudDivider /></Reveal>
         <div className="contrib-grid">
           {contrib.map((row, i) => (
             <Reveal key={i} delay={i * 0.08}>
@@ -145,16 +144,13 @@ function Timeline({ items }: { items: TimelineItem[] }) {
                   <div className={`tl-card card ${isOpen ? "open" : ""}`} onClick={() => setOpen(isOpen ? null : t.id)}>
                     <div className="tl-meta">
                       <span className="muted small">{t.date}{t.date_end ? ` — ${t.date_end}` : ""}</span>
-                      {t.kind === "story" && <span className="seal solid">重点故事</span>}
-                      {t.disputed && <span className="seal gold">有异说</span>}
-                      {t.themes.slice(0, 2).map((th) => <span key={th} className="seal qing">{th}</span>)}
                     </div>
                     <h3>{t.title}</h3>
                     <AnimatePresence initial={false}>
                       {isOpen && (
                         <motion.div className="tl-detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
                           <p>{stripLinks(t.summary)}</p>
-                          {t.evidence_level && <p className="muted small">证据：{t.evidence_level}</p>}
+                          {t.disputed && <p className="muted small">各家材料对此事的记载有出入，详见出处。</p>}
                           <div className="row" onClick={(e) => e.stopPropagation()}>
                             {t.kind === "story" || t.story
                               ? <Link className="btn small solid" to={`/stories/${encodeURIComponent(t.kind === "story" ? t.id : stripLinks(t.story))}`}>进入故事</Link>
@@ -177,7 +173,7 @@ function Timeline({ items }: { items: TimelineItem[] }) {
 }
 
 function Disputes({ fu }: { fu: WikiPage }) {
-  const items = bullets(fu.sections["待核"] || "");
+  const items = bullets(fu.sections["说法不一之处"] || fu.sections["待核"] || "");
   if (!items.length) return null;
   return (
     <section className="container section-sm">

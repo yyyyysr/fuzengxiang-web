@@ -21,18 +21,20 @@ export type TimelineItem = {
 
 export type StoryCard = PageCard & { rank: number; themes: string[]; evidence_level: string; date_end: string; one_liner: string; images: string[] };
 export type Act = { label: string; text: string; source: string; images?: string[] };
-export type Story = WikiPage & { rank: number; one_liner: string; acts: Act[]; mode: "acts" | "symbols"; operation: string; pending: string; evidence_level: string; images: ImageItem[] };
+export type Story = WikiPage & { rank: number; one_liner: string; acts: Act[]; mode: "acts" | "symbols"; people_notes: string; notes: string; full_text: string; images: ImageItem[] };
+export type Tale = { id: string; title: string; event: string; date: string; teaser: string; story: string; people: string; link_titles: Record<string, string> };
 
 export type CaseCard = PageCard & { rank: number; question: string; hypotheses: string[]; case_status: string };
+export type Evidence = { key: string; quote: string; text: string; points: string; reading: string; source: string; when: string; scope: string };
 export type Case = WikiPage & {
-  question: string; hypotheses: string[]; case_status: string; card_headers: string[]; cards: string[][];
-  hypothesis_text: string; hints: string; conclusion: string; why: string; pending: string;
+  question: string; hypotheses: string[]; labels: string[]; case_status: string; numbers: boolean; evidence: Evidence[];
+  background: string; hypothesis_text: string; hints: string; conclusion: string; why: string; open_questions: string;
 };
 
-export type Book = PageCard & { work: string; edition: string; current_holder: string; relations: Relation[]; relation_types: string[]; images: string[] };
+export type Book = PageCard & { work: string; edition: string; current_holder: string; category?: string; relations: Relation[]; relation_types: string[]; images: string[] };
 export type Person = PageCard & { birth?: number; death?: number; roles: string[]; relations: Relation[]; relation_types: string[] };
-export type NetNode = { id: string; type: string; title: string; summary: string };
-export type NetEdge = { source: string; target: string; type: string; label?: string; date?: string; evidence?: string[]; kind: string };
+export type NetNode = { id: string; type: string; title: string; summary: string; mentions: number; docs: number };
+export type NetEdge = { source: string; target: string; type: string; label?: string; date?: string; evidence?: string[]; kind: "relation" | "event" | "link"; via?: string; via_type?: string };
 
 export type ImageItem = {
   id: string; title: string; kind: string; raw_path: string; parent_id: string | null; origin: string;
@@ -117,7 +119,7 @@ export async function streamChat(question: string, history: { role: string; cont
 
 /** Parse [[target#^bid|label]] style links. */
 export const WIKILINK = /\[\[([^\]|#\\]+)(?:#(\^?[^\]|\\]+))?(?:\\?\|([^\]]+))?\]\]/g;
-export const DOC_ID = /^(cnki|wanfang|vip|book|web|img)-\d{4}$/;
+export const DOC_ID = /^(cnki|wanfang|vip|book|web|img|sup)-\d{4}$/;
 
 export function stripLinks(s: string) {
   return (s || "").replace(WIKILINK, (_m, t, _a, label) => label || t);

@@ -6,54 +6,55 @@ import { ErrorNote, Loading, PageHeader, Reveal } from "../components/ui";
 import { api, stripLinks, type Book, type WikiPage } from "../lib/api";
 import { useAgent, usePageAgent } from "../lib/store";
 
-const REL_ORDER = ["旧藏", "购藏", "经眼", "校勘", "题跋", "借阅", "影印", "捐赠", "出让", "递藏"];
 const COVERS = ["#2e4855", "#5b3a2e", "#3b4d3f", "#4a3f5c", "#6b4a2b", "#2f3e4e", "#5d2f2b"];
+const SHELVES: { key: string; name: string; note: string }[] = [
+  { key: "经", name: "经部", note: "儒家经典及其注疏" },
+  { key: "史", name: "史部", note: "正史、编年、政书" },
+  { key: "子", name: "子部", note: "诸子、类书与杂著" },
+  { key: "集", name: "集部", note: "诗文别集与总集" },
+  { key: "丛", name: "影印与编纂", note: "傅增湘参与的影印出版与著述项目" },
+];
 
 export function Shelf() {
   const [books, setBooks] = useState<Book[]>([]);
   const [err, setErr] = useState("");
-  const [rel, setRel] = useState<string | null>(null);
-  const [kind, setKind] = useState<"all" | "book" | "work">("all");
   const [open, setOpen] = useState<Book | null>(null);
   useEffect(() => { api<Book[]>("/books").then(setBooks).catch((e) => setErr(e.message)); }, []);
-  usePageAgent({ tip: "书架上的每一部书都落到具体版本。注意区分“旧藏”和“经眼”——见过不等于收藏过。", questions: ["“经眼”和“旧藏”有什么区别？", "傅增湘为什么要举债买宋本《周易正义》？"] });
-
-  const relCounts = useMemo(() => Object.fromEntries(REL_ORDER.map((r) => [r, books.filter((b) => b.relation_types.includes(r)).length])), [books]);
-  const shown = books.filter((b) => (kind === "all" || b.type === kind) && (!rel || b.relation_types.includes(rel)));
+  usePageAgent({ tip: "书架按经、史、子、集四部上架，最下一层是傅增湘参与的影印项目。点一部书，看他与这部书的具体关系和出处。", questions: ["“经眼”和“旧藏”有什么区别？", "傅增湘为什么要举债买宋本《周易正义》？"] });
+  const rows = useMemo(() => SHELVES.map((s) => ({ ...s, books: books.filter((b) => (b.type === "work" ? "丛" : b.category || "子") === s.key) })).filter((s) => s.books.length), [books]);
 
   return (
     <div className="page shelf">
-      <PageHeader eyebrow="双鉴书架" title="这本书与傅增湘究竟是什么关系" lead={<p>旧藏、经眼、校勘、题跋、借阅、影印、捐赠……同一部书可有多种关系，每一种都绑定日期与出处。</p>} />
+      <PageHeader eyebrow="双鉴书架" title="这本书与傅增湘究竟是什么关系"
+        lead={<p>书架上的每一部都落到具体版本：谁藏过、傅增湘怎样得到它、校过什么、后来去了哪里。按传统的经、史、子、集四部上架，最下一层是他参与的影印项目。</p>} />
       <section className="container">
-        <div className="shelf-filters">
-          <div className="seg">
-            {(["all", "book", "work"] as const).map((k) => (
-              <button key={k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}>{{ all: "全部", book: "具体版本", work: "著述 · 影印项目" }[k]}</button>
-            ))}
-          </div>
-          <div className="tl-filters left">
-            <button className={`chip ${!rel ? "active" : ""}`} onClick={() => setRel(null)}>全部关系</button>
-            {REL_ORDER.filter((r) => relCounts[r]).map((r) => <button key={r} className={`chip ${rel === r ? "active" : ""}`} onClick={() => setRel(r)}>{r} {relCounts[r]}</button>)}
-          </div>
-        </div>
         {err && <ErrorNote msg={err} />}
         {!books.length && !err && <Loading h={360} />}
-        <div className="bookcase">
-          <AnimatePresence mode="popLayout">
-            {shown.map((b, i) => (
-              <motion.button key={b.id} layout className="volume" onClick={() => setOpen(b)}
-                initial={{ opacity: 0, y: 40, rotate: -2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: i * 0.04, type: "spring", stiffness: 200, damping: 22 }}
-                whileHover={{ y: -14, rotate: -1.5 }}
-                style={{ ["--cover" as any]: COVERS[i % COVERS.length] }}>
-                <span className="volume-thread" />
-                <span className="volume-label"><span>{b.title.replace(/（.*?）/g, "")}</span></span>
-                <span className="volume-type">{b.type === "work" ? "项目" : "版本"}</span>
-                <span className="volume-rels">{b.relation_types.slice(0, 3).join(" · ")}</span>
-              </motion.button>
-            ))}
-          </AnimatePresence>
-          <div className="shelf-board" />
+        <div className="shelves">
+          {rows.map((row, ri) => (
+            <Reveal key={row.key} className="shelf-row" delay={ri * 0.06}>
+              <div className="shelf-tag">
+                <span className="brush">{row.key}</span>
+                <b>{row.name}</b>
+                <small>{row.note}</small>
+              </div>
+              <div className="bookcase">
+                {row.books.map((b, i) => (
+                  <motion.button key={b.id} className="volume" onClick={() => setOpen(b)}
+                    initial={{ opacity: 0, y: 40, rotate: -2 }} whileInView={{ opacity: 1, y: 0, rotate: 0 }} viewport={{ once: true }}
+                    transition={{ delay: i * 0.05, type: "spring", stiffness: 200, damping: 22 }}
+                    whileHover={{ y: -14, rotate: -1.5 }}
+                    style={{ ["--cover" as any]: COVERS[(ri * 3 + i) % COVERS.length] }}>
+                    <span className="volume-thread" />
+                    <span className="volume-label"><span>{b.title.replace(/（.*?）/g, "")}</span></span>
+                    <span className="volume-type">{b.type === "work" ? "项目" : b.edition ? b.edition.slice(0, 6) : "版本"}</span>
+                    <span className="volume-rels">{b.relation_types.slice(0, 3).join(" · ")}</span>
+                  </motion.button>
+                ))}
+                <div className="shelf-board" />
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
       <AnimatePresence>{open && <BookModal book={open} onClose={() => setOpen(null)} />}</AnimatePresence>
@@ -78,10 +79,10 @@ function BookModal({ book, onClose }: { book: Book; onClose: () => void }) {
             {book.work && <p><b>作品</b>　{book.work}</p>}
             {book.edition && <p><b>版本</b>　{book.edition}</p>}
             {book.current_holder && <p><b>现藏</b>　{book.current_holder}</p>}
-            <p className="muted">{book.summary}</p>
+            <p className="muted">{stripLinks(book.summary)}</p>
           </div>
           <div>
-            <span className="eyebrow">傅增湘做了什么</span>
+            <span className="eyebrow">它与谁有关</span>
             <ul className="rel-list">
               {book.relations.map((r, i) => (
                 <Reveal key={i} delay={i * 0.06}>
@@ -90,7 +91,7 @@ function BookModal({ book, onClose }: { book: Book; onClose: () => void }) {
                     <div>
                       <b>{stripLinks(r.target)}</b>{r.date ? <span className="muted small"> · {String(r.date)}</span> : null}
                       <p>{r.label}</p>
-                      {!!r.evidence?.length && <Markdown text={"证据：" + r.evidence.join("；")} />}
+                      {!!r.evidence?.length && <Markdown className="rel-src" text={"出处：" + r.evidence.join("；")} titles={page?.link_titles} />}
                     </div>
                   </li>
                 </Reveal>

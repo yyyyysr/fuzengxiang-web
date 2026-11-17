@@ -310,12 +310,6 @@ export function LifeCinema({ items }: { items: TimelineItem[] }) {
               <div className="cine-year">{yearLabel(cur.date)}{cur.date_end ? ` — ${cur.date_end}` : ""}</div>
               <h3>{cur.title}</h3>
               <p>{stripLinks(cur.summary)}</p>
-              <div className="cine-tags">
-                {cur.storyId && <span className="seal solid">重点故事</span>}
-                {cur.disputed && <span className="seal gold">有异说</span>}
-                {cur.themes.slice(0, 3).map((t) => <span key={t} className="seal">{t}</span>)}
-                {cur.evidence_level && <span className="cine-ev">证据：{cur.evidence_level}</span>}
-              </div>
               <div className="cine-actions">
                 {cur.storyId && <Link className="btn small solid" to={`/stories/${encodeURIComponent(cur.storyId)}`}>进入故事 →</Link>}
                 <Link className="btn small light" to={source}>查看出处</Link>

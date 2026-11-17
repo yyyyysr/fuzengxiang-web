@@ -36,6 +36,28 @@ class LLMSettings:
 settings = LLMSettings()
 
 
+async def complete_json(messages: list[dict], temperature: float = 0.2, timeout: float = 180) -> dict:
+    """One non-streaming call in JSON mode; returns the parsed object."""
+    headers = {"Authorization": f"Bearer {settings.api_key}", "Content-Type": "application/json"}
+    payload = {"model": settings.model, "messages": messages, "temperature": temperature, "max_tokens": 16000,
+               "response_format": {"type": "json_object"}, "stream": False}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=15)) as client:
+        resp = await client.post(f"{settings.base_url}/chat/completions", headers=headers, json=payload)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"LLM 接口返回 {resp.status_code}：{resp.text[:300]}")
+    choice = resp.json()["choices"][0]
+    content = (choice["message"].get("content") or "").strip()
+    content = content.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError("模型输出被截断（超出长度上限），请减少所选资料后重试")
+    if not content:
+        raise RuntimeError("模型返回了空内容")
+    try:
+        return json.loads(content, strict=False)  # long Markdown bodies often carry raw newlines inside strings
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"模型没有返回合法 JSON（{e.msg}，第 {e.pos} 字符）") from e
+
+
 async def stream_chat(messages: list[dict]) -> AsyncIterator[tuple[str, str]]:
     """Yield ("reasoning", text) for thinking-model reasoning and ("content", text) for the answer."""
     headers = {"Authorization": f"Bearer {settings.api_key}", "Content-Type": "application/json"}

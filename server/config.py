@@ -24,7 +24,12 @@ KB_ROOT = Path(os.environ.get("KB_ROOT", PROJECT.parent / "藏书家智能体" /
 EXPORT = KB_ROOT / "data" / "export"
 INDEX = KB_ROOT / "data" / "index"
 ASSETS = KB_ROOT / "assets"
+WIKI = KB_ROOT / "wiki"
+PIPELINE = KB_ROOT / "pipeline"
 WEB_DIST = PROJECT / "web" / "dist"
+
+# The wiki supplement page (/admin/wiki) writes to the knowledge base; it stays disabled until a token is set.
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 
 # OpenAI-compatible chat completion endpoint. Leave the key empty to run in
 # retrieval-only mode (answers are compiled from the evidence without an LLM).

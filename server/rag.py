@@ -48,6 +48,11 @@ SYSTEM_PROMPT = """你是“小傅”，傅增湘藏书家智能体网站的当�
 6. 标为“网站说明”的资料介绍本网站的栏目与操作。回答“怎么玩、怎么用、有什么功能”时，按其中的步骤分条说明，照用界面上的按钮名称，同样标注 [编号]；这类回答不必区分证据层级，可适当展开到 400 字，不要描述资料里没有的功能。"""
 
 
+def bigrams(text: str) -> set[str]:
+    s = re.sub(r"[^\u4e00-\u9fff0-9]", "", fold(text))
+    return {s[i:i + 2] for i in range(len(s) - 1)}
+
+
 def guide_digest(body: str, limit: int = 18) -> list[str]:
     """Headings, list items and table rows of a guide page, with wiki links reduced to their labels."""
     lines = body.splitlines()
@@ -83,6 +88,7 @@ class Dense:
         self.ready = False
         self.error = ""
         self.backend = ""
+        self.lock = threading.Lock()
         if config.ENABLE_DENSE and (config.INDEX / "embeddings.npy").exists():
             threading.Thread(target=self._load, daemon=True).start()
         else:
@@ -92,6 +98,7 @@ class Dense:
         try:
             import numpy as np
             meta = json.loads((config.INDEX / "embeddings_ids.json").read_text(encoding="utf-8"))
+            self.meta = meta
             self.rows = meta["rows"]
             self.vecs = np.load(config.INDEX / "embeddings.npy").astype("float32")
             self.np = np
@@ -105,24 +112,69 @@ class Dense:
                 sess = ort.InferenceSession(str(onnx_dir / "model.onnx"), opts, providers=["CPUExecutionProvider"])
                 tok = Tokenizer.from_file(str(onnx_dir / "tokenizer.json"))
                 tok.enable_truncation(128)
+                tok_doc = Tokenizer.from_file(str(onnx_dir / "tokenizer.json"))
+                tok_doc.enable_truncation(512)  # passages were embedded at the model's full length
 
-                def encode(text: str):
-                    e = tok.encode(text)
+                def run(e):
                     feed = {"input_ids": np.array([e.ids], np.int64), "attention_mask": np.array([e.attention_mask], np.int64),
                             "token_type_ids": np.array([e.type_ids], np.int64)}
                     return sess.run(None, feed)[0][0]
+                encode = lambda text: run(tok.encode(text))  # noqa: E731
+                self.encode_doc = lambda text: run(tok_doc.encode(text))
                 self.backend = "onnx"
             else:
                 from modelscope import snapshot_download
                 from sentence_transformers import SentenceTransformer
                 model = SentenceTransformer(snapshot_download(meta["model"]))
                 encode = lambda text: model.encode([text], normalize_embeddings=True)[0]  # noqa: E731
+                self.encode_doc = encode
                 self.backend = "sentence-transformers"
             encode("预热")
             self.encode = encode
             self.ready = True
         except Exception as e:  # noqa: BLE001 - optional component
             self.error = str(e)[:200]
+
+    def upsert(self, items: list[tuple[str, str, str]]) -> int:
+        """Embed (kind, id, passage) items, add or replace their rows and persist the index files."""
+        if not self.ready:
+            return 0
+        np = self.np
+        with self.lock:
+            index = {(r["kind"], r["id"]): i for i, r in enumerate(self.rows)}
+            vecs = self.vecs.copy()
+            for kind, rid, text in items:
+                v = np.asarray(self.encode_doc(text), dtype="float32")
+                i = index.get((kind, rid))
+                if i is None:
+                    self.rows.append({"kind": kind, "id": rid})  # rows grow before vecs so a concurrent search never indexes past them
+                    vecs = np.vstack([vecs, v[None]])
+                    index[(kind, rid)] = len(self.rows) - 1
+                else:
+                    vecs[i] = v
+            self.vecs = vecs
+            np.save(config.INDEX / "embeddings.npy", vecs.astype(np.float16))
+            (config.INDEX / "embeddings_ids.json").write_text(json.dumps({**self.meta, "rows": self.rows}, ensure_ascii=False), encoding="utf-8")
+        return len(items)
+
+    def remove(self, keep) -> int:
+        """Drop every row for which keep(row) is false and persist the index files."""
+        if not self.ready:
+            return 0
+        with self.lock:
+            idx = [i for i, r in enumerate(self.rows) if keep(r)]
+            dropped = len(self.rows) - len(idx)
+            if dropped:
+                vecs = self.vecs[idx]
+                rows = [self.rows[i] for i in idx]
+                self.vecs, self.rows = vecs, rows  # vecs first: a concurrent search then indexes the old, longer rows list
+                self.np.save(config.INDEX / "embeddings.npy", vecs.astype(self.np.float16))
+                (config.INDEX / "embeddings_ids.json").write_text(json.dumps({**self.meta, "rows": rows}, ensure_ascii=False), encoding="utf-8")
+        return dropped
+
+    def missing_wiki(self, page_ids) -> list[str]:
+        have = {r["id"] for r in self.rows if r["kind"] == "wiki"} if self.ready else set()
+        return [p for p in page_ids if p not in have]
 
     def search(self, query: str, k: int = 30) -> list[dict]:
         if not self.ready:
@@ -312,11 +364,17 @@ class RAG:
 
         ranked = sorted(fused, key=fused.get, reverse=True)
         wiki_ids = [k[1] for k in ranked if k[0] == "wiki" and k[1] in self.kb.pages][:4]
-        chunk_ids = [k[1] for k in ranked if k[0] == "chunk"][:6]
-        chunks = []
-        for cid in chunk_ids:
+        chunks, kept_grams = [], []
+        for cid in [k[1] for k in ranked if k[0] == "chunk"][:20]:
+            if len(chunks) >= 6:
+                break
             r = con.execute("SELECT c.chunk_id, c.doc_id, c.heading, c.block_ids, c.page_start, c.text FROM chunks c WHERE c.chunk_id=?", (cid,)).fetchone()
             if r:
+                g = bigrams(r["text"])
+                # Many papers retell the same passage; keep one copy so other evidence gets the remaining slots.
+                if any(len(g & k) / max(1, min(len(g), len(k))) > 0.6 for k in kept_grams):
+                    continue
+                kept_grams.append(g)
                 d = self.kb.documents.get(r["doc_id"], {})
                 chunks.append({"chunk_id": r["chunk_id"], "doc_id": r["doc_id"], "heading": r["heading"],
                                "bid": (json.loads(r["block_ids"]) or [None])[0], "page": r["page_start"],

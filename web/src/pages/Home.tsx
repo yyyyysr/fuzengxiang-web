@@ -15,13 +15,13 @@ const POEM = ["篇篇题跋妙钩玄", "过目都留副本存", "手校宋元八
 
 type Scene = { year: string; place: string; title: string; text: string; img: string; to: string; cta: string; tone?: "sad" };
 const SCENES: Scene[] = [
-  { year: "1872", place: "四川江安", title: "生于蜀中", text: "傅增湘字沅叔，祖父傅诚留下一部元兴文署本《资治通鉴音注》——这是日后“双鉴”的第一鉴。", img: "img-0009", to: "/life", cta: "认识傅增湘" },
-  { year: "1911", place: "上海 · 苏州", title: "放意搜求", text: "南北议和留沪数月，访书苏州，购得四库进呈宋刊《古文集成》，从此“放意搜求”旧本精椠。", img: "img-0062", to: "/wiki/1911-购得宋刊古文集成", cta: "看这件事" },
-  { year: "1916", place: "天津", title: "双鉴名楼", text: "收得端方旧藏宋本《资治通鉴》，与祖遗元刊相配，名藏书处为“双鉴楼”。", img: "img-0037", to: "/wiki/双鉴楼", cta: "双鉴楼的三种说法" },
-  { year: "1918", place: "北京 · 石老娘胡同", title: "卜宅藏园", text: "取东坡“万人如海一身藏”诗意，名宅为藏园。此后每日校书三十页，平生手校一万六千余卷。", img: "img-0069", to: "/stories/校一页通典", cta: "和小傅校一页书" },
-  { year: "1930", place: "北平", title: "书林斡旋", text: "海源阁宋本《扬子法言》被赵万里、邢之襄各得其半，傅增湘居间斡旋，终成完璧。", img: "img-0040", to: "/stories/扬子法言合璧", cta: "拼合半部书" },
-  { year: "1941", place: "琉璃厂 · 文友堂", title: "一夜之火", text: "送修的北宋本《乐府诗集》因装工拖延一日未送回书肆——当夜文友堂失火。", img: "img-0068", to: "/stories/乐府诗集避火", cta: "书当夜在哪里？", tone: "sad" },
-  { year: "1949", place: "北京图书馆", title: "藏书归公", text: "手校书、“双鉴”与外库书分批进入公藏。“私家之守，不敌公库之藏矣。”", img: "img-0011", to: "/stories/藏园群书入公藏", cta: "沿清册追踪" },
+  { year: "1872", place: "四川江安", title: "生于蜀中", text: "傅增湘，字沅叔，1872 年生于四川江安，少年随父宦游，后定居天津。祖父傅诚给家里留下一部元刊《资治通鉴音注》——多年以后，它成了“双鉴楼”两部《通鉴》中的第一部。", img: "img-0009", to: "/life", cta: "认识傅增湘" },
+  { year: "1911", place: "上海 · 苏州", title: "放意搜求", text: "辛亥年冬，傅增湘随南北议和代表团南下，在上海停留数月。他抽空到苏州访书，买到一部曾进呈四库馆的宋刊《古文集成》，这是他得到的第一部宋版书；从此，他开始“放意搜求”宋元旧本。", img: "img-0062", to: "/wiki/1911-购得宋刊古文集成", cta: "看这件事" },
+  { year: "1916", place: "天津", title: "双鉴名楼", text: "1916 年，傅增湘收得清末大臣端方旧藏的宋刊《资治通鉴》。一部是祖父传下的元刊，一部是新得的宋刊，两部《通鉴》同处一室，他便把藏书处命名为“双鉴楼”。", img: "img-0037", to: "/wiki/双鉴楼", cta: "双鉴楼的三种说法" },
+  { year: "1918", place: "北京 · 石老娘胡同", title: "卜宅藏园", text: "1918 年，傅增湘在北京西四石老娘胡同买下一座宅院，取苏轼“万人如海一身藏”的诗意，命名为“藏园”。此后三十年，他在这里坚持“每日校书，以三十页为度”，一生手校古籍一万六千余卷。", img: "img-0069", to: "/stories/校一页通典", cta: "和小傅校一页书" },
+  { year: "1930", place: "北平", title: "书林斡旋", text: "山东聊城海源阁的藏书在战乱中散出，一部宋本《扬子法言》被拆开出售，赵万里和邢之襄各买到一半，谁也不肯相让。傅增湘居间劝说，赵万里慨然让出自己那一半，这部书终于重成完璧。", img: "img-0040", to: "/stories/扬子法言合璧", cta: "拼合半部书" },
+  { year: "1941", place: "琉璃厂 · 文友堂", title: "一夜之火", text: "1941 年初，傅增湘把珍藏二十多年的北宋本《乐府诗集》交琉璃厂文友堂请人重装。修好那天，装工因赴午宴耽搁，没有把书送回书肆——当天夜里，文友堂突然失火，满屋图书化为灰烬。", img: "img-0068", to: "/stories/乐府诗集避火", cta: "书当夜在哪里？", tone: "sad" },
+  { year: "1949", place: "北京图书馆", title: "藏书归公", text: "傅增湘看着天一阁、海源阁的藏书先后散失，感叹“私家之守，不敌公库之藏”。1947 年他把手校书捐给北平图书馆，又嘱咐子孙在他身后把藏书捐给国家；“双鉴”和善本最终都进入了公藏。", img: "img-0011", to: "/stories/藏园群书入公藏", cta: "沿清册追踪" },
 ];
 
 const POSTERS = ["story-yuefu-3", "story-yangzi-2", "story-flood-2"];
@@ -275,7 +275,7 @@ function Columns() {
               <div className="b-body">
                 <span className="col-seal light">事</span>
                 <h3>藏园故事</h3>
-                <p>十个有材料支撑的故事：逐幕放映，再把情节排出先后。</p>
+                <p>十个有材料支撑的故事逐幕放映，另有一组用白话讲的藏园小故事。</p>
                 <div className="b-foot"><Stat n={counts.stories} unit="个重点故事" /></div>
               </div>
               <div className="b-posters" aria-hidden>
@@ -289,7 +289,7 @@ function Columns() {
               <div className="b-body">
                 <span className="col-seal light">证</span>
                 <h3>史料侦探</h3>
-                <p>先下判断，再翻证据卡。</p>
+                <p>先读史料，再下判断。</p>
                 <div className="b-foot"><Stat n={counts.cases} unit="份卷宗" /></div>
               </div>
             </TiltLink>
@@ -302,7 +302,7 @@ function Columns() {
               <div className="b-body">
                 <span className="col-seal">书</span>
                 <h3>双鉴书架</h3>
-                <p>旧藏还是经眼？每种关系都带出处。</p>
+                <p>按经、史、子、集上架的宋元善本与傅氏影印项目。</p>
                 <div className="b-foot"><Stat n={counts.books} unit="部具体版本" /></div>
               </div>
             </TiltLink>
@@ -312,7 +312,7 @@ function Columns() {
               <div className="b-body">
                 <span className="col-seal">往</span>
                 <h3>书林往来</h3>
-                <p>以傅增湘为中心的人物关系图，没有出处的线一条不画。</p>
+                <p>人物、藏书与机构的关系图；气泡越大，在材料中被提及得越多。</p>
                 <div className="b-foot"><Stat n={counts.people} unit="位书林人物" /></div>
               </div>
               <svg className="b-net" viewBox="0 0 300 220" aria-hidden>
@@ -347,14 +347,6 @@ function Columns() {
             </TiltLink>
           </Reveal>
         </div>
-        {counts.documents ? (
-          <Reveal className="data-strip">
-            <div><b><CountUp to={counts.documents} /></b><span>篇文献整理入库</span></div>
-            <div><b><CountUp to={counts.canonical} /></b><span>篇去重后的主本</span></div>
-            <div><b><CountUp to={counts.events} /></b><span>个可定年的事件</span></div>
-            <div><b><CountUp to={counts.images} /></b><span>幅印鉴书画图像</span></div>
-          </Reveal>
-        ) : null}
       </div>
     </section>
   );
@@ -390,7 +382,7 @@ function Footer() {
           <p className="muted small">傅增湘藏书家智能体 · 内容依据整理入库的论文、图书摘录、档案与图像，史实以原文为准。小傅是当代导览角色，不代表傅增湘本人发言。</p>
         </div>
         <div className="footer-links">
-          <Link to="/wiki/网站导览">网站导览</Link><Link to="/search">全站检索</Link><Link to="/wiki/overview">知识库综述</Link><Link to="/wiki/证据层级">证据层级说明</Link><Link to="/gallery">图像长廊</Link>
+          <Link to="/wiki/网站导览">网站导览</Link><Link to="/search">全站检索</Link><Link to="/wiki/overview">知识库综述</Link><Link to="/wiki/证据层级">证据层级说明</Link><Link to="/gallery">图像长廊</Link><Link to="/admin/wiki">知识库后台</Link>
         </div>
       </div>
     </footer>

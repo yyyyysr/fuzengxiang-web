@@ -1,5 +1,17 @@
 import { animate, motion, useInView, type HTMLMotionProps } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+
+/** "← 返回" goes back to wherever the reader came from inside the site; on a fresh tab it opens `fallback`. */
+export function BackLink({ fallback, label, className = "back-link" }: { fallback: string; label: string; className?: string }) {
+  const nav = useNavigate();
+  const canBack = (window.history.state?.idx ?? 0) > 0;
+  return (
+    <a href={fallback} className={className} onClick={(e) => { e.preventDefault(); if (canBack) nav(-1); else nav(fallback); }}>
+      ← {canBack ? "返回" : label}
+    </a>
+  );
+}
 
 /** Counts up from 0 the first time it scrolls into view. */
 export function CountUp({ to, duration = 1.6, className = "" }: { to: number; duration?: number; className?: string }) {

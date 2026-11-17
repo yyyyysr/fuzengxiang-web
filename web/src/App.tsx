@@ -1,13 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Lenis from "lenis";
-import { useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Route, Routes, useLocation, useNavigationType } from "react-router-dom";
 import { InkCursor } from "./components/InkCursor";
 import { InkVeil } from "./components/InkVeil";
 import { Nav } from "./components/Nav";
 import { Palette } from "./components/Palette";
 import { SourceDrawer } from "./components/SourceDrawer";
 import { XiaoFu } from "./components/XiaoFu";
+import { AdminWiki } from "./pages/AdminWiki";
 import { CaseDetail, Cases } from "./pages/Cases";
 import { DocReader } from "./pages/DocReader";
 import { Gallery } from "./pages/Gallery";
@@ -32,8 +33,62 @@ function Page({ children }: { children: React.ReactNode }) {
   );
 }
 
+const SPOTS_KEY = "fzx-scroll";
+
+function scrollNow(top: number) {
+  const lenis = (window as any).__lenis;
+  if (lenis) lenis.scrollTo(top, { immediate: true, force: true });
+  else window.scrollTo(0, top);
+}
+
+/** Remember the scroll offset of every history entry; Back/Forward returns to it once the page is tall enough again. */
+function useScrollMemory(key: string, hash: string) {
+  const navType = useNavigationType();
+  const spots = useRef<Record<string, number>>(JSON.parse(sessionStorage.getItem(SPOTS_KEY) || "{}"));
+  const current = useRef(key);
+
+  useEffect(() => {
+    window.history.scrollRestoration = "manual";
+    let raf = 0;
+    const save = () => { raf = 0; spots.current[current.current] = window.scrollY; };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(save); };
+    const persist = () => sessionStorage.setItem(SPOTS_KEY, JSON.stringify(spots.current));
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", persist);
+    return () => { cancelAnimationFrame(raf); persist(); window.removeEventListener("scroll", onScroll); window.removeEventListener("pagehide", persist); };
+  }, []);
+
+  useEffect(() => {
+    current.current = key;
+    const target = navType === "POP" ? spots.current[key] : undefined;
+    if (!target) {
+      if (!hash) scrollNow(0);
+      return;
+    }
+    // The previous page plays its exit animation first and the new one loads its data, so keep
+    // trying until the document can reach the old offset; any user scroll input cancels.
+    let stop = false, settled = 0;
+    const cancel = () => { stop = true; };
+    const t0 = performance.now();
+    const tick = () => {
+      if (stop) return;
+      const reachable = document.documentElement.scrollHeight - window.innerHeight >= target - 2;
+      if (performance.now() - t0 > 600 && reachable) {
+        if (Math.abs(window.scrollY - target) > 2) { scrollNow(target); settled = 0; } else settled++;
+      }
+      if (settled < 6 && performance.now() - t0 < 5000) window.setTimeout(tick, 60);
+    };
+    tick();
+    window.addEventListener("wheel", cancel, { passive: true });
+    window.addEventListener("touchstart", cancel, { passive: true });
+    window.addEventListener("keydown", cancel);
+    return () => { stop = true; window.removeEventListener("wheel", cancel); window.removeEventListener("touchstart", cancel); window.removeEventListener("keydown", cancel); };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 export default function App() {
   const loc = useLocation();
+  useScrollMemory(loc.key, loc.hash);
 
   useEffect(() => {
     // Floating panels marked data-scroll-trap scroll on their own: Lenis leaves them alone, and a
@@ -57,10 +112,6 @@ export default function App() {
     return () => { cancelAnimationFrame(raf); lenis.destroy(); window.removeEventListener("wheel", trap); };
   }, []);
 
-  useEffect(() => {
-    if (!loc.hash) (window as any).__lenis?.scrollTo(0, { immediate: true }) ?? window.scrollTo(0, 0);
-  }, [loc.pathname]);
-
   return (
     <>
       <Nav />
@@ -78,6 +129,7 @@ export default function App() {
           <Route path="/wiki/:id" element={<Page><WikiView /></Page>} />
           <Route path="/doc/:id" element={<Page><DocReader /></Page>} />
           <Route path="/search" element={<Page><Search /></Page>} />
+          <Route path="/admin/wiki" element={<Page><AdminWiki /></Page>} />
           <Route path="*" element={<Page><div className="page container empty">页面不存在。<a className="link-zhu" href="/">回到首页</a></div></Page>} />
         </Routes>
       </AnimatePresence>

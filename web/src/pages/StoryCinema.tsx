@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { InkStage, preloadImages } from "../components/InkStage";
 import { Markdown } from "../components/Markdown";
+import { BackLink } from "../components/ui";
 import { Avatar } from "../components/XiaoFu";
 import { kbAsset, stripLinks, type Act, type Story } from "../lib/api";
 import { actArt, artUrl, STORY_ART } from "../lib/scenes";
@@ -12,7 +12,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const reduced = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 const MIDDLE_LINES = [
   "每一幕下方都标着出处，点开就能读到原文那一段。",
-  "留意这一幕的时间和地点——放映结束后，要把几幕排回先后。",
+  "留意这一幕的时间和地点，它和上一幕是接着发生的。",
   "画面里的天气、光线和季节，是照着史料里的情形画的。",
   "想自己掌握节奏？关掉右下角的“自动续播”，用 ← → 翻幕。",
 ];
@@ -21,7 +21,7 @@ function guideLine(i: number, total: number, symbols: boolean, sadHere: boolean)
   if (i < 0) return symbols ? `这一则是“校一页书”：${total} 种校勘符号，每种都配着真实批校。点“开始放映”，我陪你认。`
     : `我是小傅。这则故事分 ${total} 幕，大约一分钟。点“开始放映”，我陪你看。`;
   if (i === total - 1) return symbols ? "符号都认过了。下一步，去真实的批校页上把它们找出来。"
-    : "放映结束。点右下角“排一排先后”，把这几幕排回原来的顺序。";
+    : "放映结束。往下可以读完整的故事、认识故事里的人，每段都附出处。";
   if (sadHere) return "书正处在险境里……别急，往下看它的下落。";
   if (i === 0) return "旁白会一个字一个字打出来；等不及就点一下文字，全文立刻出现。";
   return MIDDLE_LINES[(i - 1) % MIDDLE_LINES.length];
@@ -85,8 +85,10 @@ function Narration({ act, titles, onDone }: { act: Act; titles: Record<string, s
   );
 }
 
-export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFinish }: {
-  story: Story; acts: Act[]; rankLabel: string; charFor: (i: number) => string; sadAct: number; sad: boolean; onFinish: () => void;
+const CN_NUM = "〇一二三四五六七八九十";
+
+export function StoryCinema({ story, acts, rankLabel, seal, sadAct, sad, onFinish, finishLabel }: {
+  story: Story; acts: Act[]; rankLabel: string; seal?: (i: number) => string; sadAct: number; sad: boolean; onFinish: () => void; finishLabel: string;
 }) {
   const { express, emotion } = useAgent();
   const symbols = story.mode === "symbols";
@@ -170,7 +172,7 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
       <div className="scine-shade" />
 
       <div className="scine-top">
-        <Link to="/stories" className="scine-back">← 藏园故事</Link>
+        <BackLink fallback="/stories" label="藏园故事" className="scine-back" />
         <span className="scine-ep">重点故事 · 第{rankLabel}则</span>
       </div>
 
@@ -187,7 +189,7 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
         {i < 0 ? (
           <motion.div key="open" className="scine-open" exit={{ opacity: 0, y: -24, filter: "blur(8px)" }} transition={{ duration: 0.5 }}>
             <motion.span className="scine-eyebrow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-              {symbols ? `${acts.length} 种校勘符号` : `${acts.length} 幕 · 约一分钟`} · {story.evidence_level}
+              {symbols ? `${acts.length} 种校勘符号` : `${acts.length} 幕 · 约一分钟`}
             </motion.span>
             <h1 className="scine-title" aria-label={story.title}>
               {[...story.title].map((c, k) => (
@@ -204,12 +206,14 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
             </motion.div>
           </motion.div>
         ) : (
-          <motion.div key={i} className={`scine-act ${realImg ? "with-real" : ""}`} initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div key={i} className={`scine-act ${realImg ? "with-real" : ""} ${seal ? "" : "no-seal"}`} initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -18, filter: "blur(6px)" }} transition={{ duration: 0.55, ease: EASE }}>
-            <motion.span className="scine-char brush" initial={{ scale: 1.6, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 240, damping: 15, delay: 0.15 }}>{charFor(i)}</motion.span>
+            {seal && <motion.span className="scine-char brush" initial={{ scale: 1.6, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 240, damping: 15, delay: 0.15 }}>{seal(i)}</motion.span>}
             <div className="scine-body">
-              <span className="scine-label">{symbols ? `符号 ${i + 1} / ${acts.length}` : `第 ${i + 1} 幕`}{cur!.label !== charFor(i) && ` · ${cur!.label}`}</span>
+              <span className="scine-label">{symbols ? `符号 ${i + 1} / ${acts.length}` : `第${CN_NUM[i + 1]}幕`}</span>
+              {!symbols && <h2 className="scine-act-title">{cur!.label}</h2>}
+              {symbols && <span className="scine-label">{cur!.label}</span>}
               <Narration act={cur!} titles={story.link_titles} onDone={() => setTyped(true)} />
             </div>
             {realImg && (
@@ -226,17 +230,17 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
         <button className="scine-nav" onClick={() => go(i - 1)} disabled={i < 0} aria-label="上一幕">‹</button>
         <div className="scine-dots">
           {acts.map((a, k) => {
-            const sub = a.label === charFor(k) ? (symbols ? `符号 ${k + 1}` : `第 ${k + 1} 幕`) : a.label;
+            const mark = seal ? seal(k) : CN_NUM[k + 1];
             return (
-            <button key={k} className={`${k === i ? "on" : ""} ${k < i ? "done" : ""}`} onClick={() => go(k)} aria-label={`${charFor(k)} ${sub}`}>
-              <b className="brush">{charFor(k)}</b><span>{sub}</span>
+            <button key={k} className={`${k === i ? "on" : ""} ${k < i ? "done" : ""}`} onClick={() => go(k)} aria-label={`${symbols ? "符号" : "第"}${mark}${symbols ? "" : "幕"} ${a.label}`}>
+              <b className="brush">{mark}</b><span>{a.label}</span>
               {k === i && auto && typed && k < last && <i className="scine-timer" />}
             </button>
             );
           })}
         </div>
         <button className={`scine-nav next ${i >= last ? "wide" : ""} ${i === last && typed ? "pulse" : ""}`} onClick={next} aria-label={i >= last ? "下一步" : "下一幕"}>
-          {i >= last ? (symbols ? "认一认真实批校 →" : "排一排先后 →") : "›"}
+          {i >= last ? finishLabel : "›"}
         </button>
         <button className={`scine-auto ${auto ? "on" : ""}`} onClick={() => setAuto(!auto)} aria-pressed={auto} title="自动续播">
           {auto ? "自动续播 · 开" : "自动续播 · 关"}
