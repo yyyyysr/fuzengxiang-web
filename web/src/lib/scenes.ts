@@ -16,7 +16,7 @@ export const STORY_ART: Record<string, StoryArt> = {
   永乐大典六册: { slug: "yongle", poster: "story-yongle-2", acts: [a("story-yongle-1", "dust", 0.7), a("story-yongle-2", "dust", 0.42), a("story-yongle-3", "snow", 0.42), a("story-yongle-4", "dust", 0.3)] },
   百衲本史记选底本: { slug: "bainaben", poster: "story-bainaben-4", acts: [a("story-bainaben-1", "dust", 0.55), a("story-bainaben-2", "dust", 0.62, "dark"), a("story-bainaben-3", "dust"), a("story-bainaben-4", "dust")] },
   道藏影印订购: { slug: "daozang", poster: "story-daozang-1", acts: [a("story-daozang-1", "snow", 0.35), a("story-daozang-2", "dust", 0.45), a("story-daozang-3", "dust"), a("story-daozang-4", "dust")] },
-  校一页通典: { slug: "tongdian", poster: "story-tongdian-1", acts: [a("story-tongdian-1", "ember", 0.42, "dark")] },
+  校一页通典: { slug: "tongdian", poster: "story-tongdian-1", acts: [a("story-tongdian-1", "ember", 0.42, "dark"), a("story-tongdian-2", "ember", 0.55, "dark"), a("story-tongdian-3", "dust", 0.55, "dark"), a("story-tongdian-4", "dust", 0.45), a("story-tongdian-5", "dust", 0.4, "dark")] },
   藏园群书入公藏: { slug: "gongcang", poster: "story-gongcang-2", acts: [a("story-gongcang-1", "leaf", 0.45), a("story-gongcang-2", "leaf", 0.5), a("story-gongcang-3", "snow"), a("story-gongcang-4", "mist", 0.7), a("story-gongcang-5", "dust")] },
 };
 
