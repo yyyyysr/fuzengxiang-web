@@ -47,7 +47,7 @@ export function Shelf() {
                     style={{ ["--cover" as any]: COVERS[(ri * 3 + i) % COVERS.length] }}>
                     <span className="volume-thread" />
                     <span className="volume-label"><span>{b.title.replace(/（.*?）/g, "")}</span></span>
-                    <span className="volume-type">{b.type === "work" ? "项目" : b.edition ? b.edition.slice(0, 6) : "版本"}</span>
+                    <span className="volume-type">{b.type === "work" ? "项目" : "版本"}</span>
                     <span className="volume-rels">{b.relation_types.slice(0, 3).join(" · ")}</span>
                   </motion.button>
                 ))}

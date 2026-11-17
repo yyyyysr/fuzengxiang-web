@@ -32,7 +32,7 @@ TYPE_DIRS = {"person": "people", "book": "books", "work": "works", "place": "pla
 TYPE_NAMES = {"person": "人物", "book": "书籍（具体版本或藏本）", "work": "傅增湘的著述、编纂或影印项目", "place": "地点",
               "org": "机构", "event": "可定年的事件", "concept": "版本学、校勘学术语"}
 REL_TYPES = ["旧藏", "经眼", "校勘", "题跋", "借阅", "影印", "捐赠", "出让", "购藏", "递藏", "书札往来", "同事", "师友", "荐举",
-             "合作编纂", "访书", "任职", "收藏", "交游"]
+             "合作编纂", "访书", "亲属", "品评", "交游", "任职", "收藏"]
 FM_KEYS = ("birth", "death", "native_place", "roles", "relation_types", "work", "edition", "current_holder", "category",
            "date", "date_end", "date_precision", "themes", "participants", "books", "places")
 UPLOAD = "sup-new"
