@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
 import { TiltLink } from "../components/Tilt";
-import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal } from "../components/ui";
+import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal, SplitText } from "../components/ui";
 import { api, kbAsset, stripLinks, type Act, type Story, type StoryCard, type TimelineItem } from "../lib/api";
 import { artUrl, STORY_ART } from "../lib/scenes";
 import { useAgent, usePageAgent } from "../lib/store";
@@ -54,7 +54,7 @@ export function Stories() {
       </section>
       {!!others.length && (
         <section className="container section">
-          <Reveal className="center"><span className="eyebrow">时间索引</span><h2 className="section-title brush">其他有据可查的事</h2><CloudDivider /></Reveal>
+          <Reveal className="center"><span className="eyebrow">时间索引</span><h2 className="section-title brush"><SplitText text="其他有据可查的事" inView /></h2><CloudDivider /></Reveal>
           <div className="time-index">
             {others.map((t, i) => (
               <Reveal key={t.id} delay={(i % 6) * 0.04}>
@@ -84,7 +84,7 @@ export function StoryDetail() {
   }, [id]);
   usePageAgent(s ? {
     id: s.id, title: s.title,
-    tip: SAD_STORIES.has(s.id) ? "这是一个书遭遇险境的故事。点“开始放映”，每一幕下方都标着出处。" : "点“开始放映”，看看问题从哪里出现。用 ← → 键也能切换。",
+    tip: "", // the cinema shows 小傅's own per-act guide line
     questions: [`${s.title}——这件事的原始依据是什么？`, `这个故事里还有哪些地方待核？`],
   } : {}, [s?.id]);
   if (err) return <div className="page"><ErrorNote msg={err} /></div>;
@@ -96,7 +96,7 @@ export function StoryDetail() {
       <Player story={s} rankLabel={CN_NUM[s.rank] || String(s.rank)} />
       {!!s.images?.length && (
         <section className="container section-sm">
-          <Reveal><span className="eyebrow">真实材料</span><h2 className="section-title brush">批校原件局部</h2></Reveal>
+          <Reveal><span className="eyebrow">真实材料</span><h2 className="section-title brush"><SplitText text="批校原件局部" inView /></h2></Reveal>
           <div className="story-images">
             {s.images.map((im) => (
               <Reveal key={im.id} className="story-img"><img src={kbAsset(im.thumb)} alt={im.title} loading="lazy" /><span>{im.title}</span></Reveal>

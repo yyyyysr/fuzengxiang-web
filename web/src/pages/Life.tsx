@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useScroll, useSpring } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Markdown } from "../components/Markdown";
-import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal } from "../components/ui";
+import { CloudDivider, ErrorNote, Loading, PageHeader, Reveal, SplitText } from "../components/ui";
 import { api, kbAsset, stripLinks, type TimelineItem, type WikiPage } from "../lib/api";
 import { bullets, parseTable, yearOf } from "../lib/md";
 import { useAgent, usePageAgent } from "../lib/store";
@@ -47,7 +47,7 @@ function Chronicle({ items }: { items: TimelineItem[] }) {
       <section className="container chron-head">
         <Reveal className="center">
           <span className="eyebrow">互动年谱 · 流光</span>
-          <h2 className="section-title brush">七十八年，六个篇章</h2>
+          <h2 className="section-title brush"><SplitText text="七十八年，六个篇章" inView /></h2>
           <CloudDivider />
           <p className="muted">从江安少年到双鉴楼主人。滚动翻阅每一年；想快速浏览或按主题筛选，可切换到列表。</p>
           <div className="seg-toggle" role="tablist">
@@ -83,7 +83,7 @@ function Intro({ fu }: { fu: WikiPage }) {
         </Reveal>
       </section>
       <section className="container section-sm">
-        <Reveal className="center"><span className="eyebrow">贡献五项</span><h2 className="section-title brush">不以称号代替事例</h2><CloudDivider /></Reveal>
+        <Reveal className="center"><span className="eyebrow">贡献五项</span><h2 className="section-title brush"><SplitText text="不以称号代替事例" inView /></h2><CloudDivider /></Reveal>
         <div className="contrib-grid">
           {contrib.map((row, i) => (
             <Reveal key={i} delay={i * 0.08}>

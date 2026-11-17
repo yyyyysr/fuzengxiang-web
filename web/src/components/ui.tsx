@@ -14,6 +14,25 @@ export function CountUp({ to, duration = 1.6, className = "" }: { to: number; du
   return <span ref={ref} className={className}><span className="sr-only">{to}</span><span aria-hidden>{v}</span></span>;
 }
 
+const SPLIT_FROM = { opacity: 0, y: "0.45em", filter: "blur(10px)", rotate: -4 };
+const SPLIT_TO = { opacity: 1, y: "0em", filter: "blur(0px)", rotate: 0 };
+
+/** Characters rise out of an ink blur one by one, on mount (or when scrolled into view with `inView`). */
+export function SplitText({ text, delay = 0, stagger = 0.055, inView = false, play = true, className = "" }: {
+  text: string; delay?: number; stagger?: number; inView?: boolean; play?: boolean; className?: string;
+}) {
+  const trigger = inView ? { whileInView: SPLIT_TO, viewport: { once: true, margin: "-40px" } } : { animate: play ? SPLIT_TO : SPLIT_FROM };
+  return (
+    <span className={`split ${className}`}>
+      <span className="sr-only">{text}</span>
+      {[...text].map((c, i) => (
+        <motion.span key={i} aria-hidden className="split-ch" initial={SPLIT_FROM} {...trigger}
+          transition={{ delay: delay + i * stagger, duration: 0.85, ease: [0.22, 1, 0.36, 1] }}>{c === " " ? "\u00a0" : c}</motion.span>
+      ))}
+    </span>
+  );
+}
+
 export function Reveal({ children, delay = 0, y = 28, className = "", ...rest }: { children: ReactNode; delay?: number; y?: number; className?: string } & HTMLMotionProps<"div">) {
   return (
     <motion.div
@@ -34,9 +53,7 @@ export function PageHeader({ eyebrow, title, lead, side }: { eyebrow: string; ti
     <header className="page-header container">
       <div>
         <motion.span className="eyebrow" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }}>{eyebrow}</motion.span>
-        <motion.h1 className="page-title" initial={{ opacity: 0, y: 30, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}>
-          {title}
-        </motion.h1>
+        <h1 className="page-title"><SplitText text={title} delay={0.12} stagger={title.length > 10 ? 0.04 : 0.07} /></h1>
         {lead && <motion.div className="page-lead" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.9 }}>{lead}</motion.div>}
       </div>
       {side && <motion.div className="page-header-side" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 0.9 }}>{side}</motion.div>}

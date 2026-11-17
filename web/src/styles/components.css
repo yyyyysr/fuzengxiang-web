@@ -80,8 +80,8 @@
 .xf-avatar-btn { position: relative; border: 0; background: none; padding: 0; width: 118px; height: 118px; }
 .xf-halo { position: absolute; left: 50%; top: 58%; width: 86px; height: 86px; margin: -43px 0 0 -43px; border-radius: 50%; background: radial-gradient(circle, rgba(168, 50, 42, 0.22), transparent 70%); }
 .xf-halo::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(168, 50, 42, 0.35); animation: inkPulse 2.8s ease-out infinite; }
-.xf-avatar-btn.sleep .xf-halo { opacity: 0.3; }
-.xf-avatar-btn.thinking .xf-halo::after { animation-duration: 1.1s; }
+.xf-avatar-btn.emo-sleep .xf-halo { opacity: 0.3; }
+.xf-avatar-btn.emo-thinking .xf-halo::after { animation-duration: 1.1s; }
 .xf-zzz { position: absolute; top: 4px; right: 8px; font-size: 16px; color: var(--ink-3); font-style: italic; animation: float 2.4s ease-in-out infinite; letter-spacing: 0.2em; }
 .xf-bubble { position: relative; max-width: 290px; background: #fffaf0; border: 1px solid var(--line); border-radius: 14px 14px 4px 14px; padding: 14px 16px 12px; box-shadow: var(--shadow); font-size: 14px; line-height: 1.7; margin-bottom: 52px; }
 .xf-bubble::after { content: ""; position: absolute; right: -7px; bottom: 16px; width: 12px; height: 12px; background: #fffaf0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(-45deg); }

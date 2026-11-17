@@ -127,7 +127,7 @@ export function XiaoFu() {
           )}
         </AnimatePresence>
         <motion.button
-          className={`xf-avatar-btn ${emotion}`}
+          className={`xf-avatar-btn emo-${emotion}`}
           onClick={() => (chatOpen ? closeChat() : openChat())}
           whileHover={{ scale: 1.06, rotate: -2 }} whileTap={{ scale: 0.95 }}
           aria-label="打开小傅问答"

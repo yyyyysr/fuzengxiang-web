@@ -32,7 +32,7 @@
 .hero-poem-cite { position: absolute; bottom: -40px; left: 0; font-size: 12px; letter-spacing: 0.3em; opacity: 0.6; }
 .hero-title { max-width: 420px; }
 .hero-title h1 { font-family: var(--font-brush); font-weight: 400; font-size: clamp(64px, 9vw, 128px); line-height: 1; margin: 22px 0 14px; letter-spacing: 0.08em; }
-.hero-title h1 span { font-size: 0.42em; margin-left: 12px; color: #d78f73; vertical-align: top; }
+.hero-title h1 .hero-h1-sub { font-size: 0.42em; margin-left: 12px; color: #d78f73; vertical-align: top; }
 .hero-title p { font-size: 17px; letter-spacing: 0.24em; opacity: 0.86; line-height: 2; }
 .hero-actions { display: flex; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
 .hero .btn { color: #f1e8d6; border-color: rgba(241, 232, 214, 0.6); }

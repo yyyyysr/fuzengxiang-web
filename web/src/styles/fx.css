@@ -20,6 +20,19 @@
   animation: inkSplash 0.65s var(--ease) forwards; }
 @keyframes inkSplash { from { transform: rotate(var(--rot)) scale(0.2); opacity: 1; } to { transform: rotate(var(--rot)) scale(1.5); opacity: 0; } }
 
+/* ---------- 墨晕转场 ---------- */
+.ink-veil { position: fixed; inset: 0; z-index: 170; pointer-events: none; overflow: hidden; }
+.ink-veil-wash, .ink-veil-core { position: absolute; translate: -50% -50%; will-change: transform; }
+.ink-veil-wash { border-radius: 46% 54% 41% 59% / 57% 43% 57% 43%;
+  background: radial-gradient(closest-side, rgba(38, 31, 25, 0.6) 0 56%, rgba(38, 31, 25, 0.34) 82%, rgba(38, 31, 25, 0) 100%); }
+.ink-veil-wash i { position: absolute; translate: -50% -50%; border-radius: 50%; background: rgba(30, 24, 19, 0.72); }
+.ink-veil-core { border-radius: 53% 47% 58% 42% / 44% 56% 44% 56%;
+  background: radial-gradient(closest-side, #1b1612 0 72%, rgba(27, 22, 18, 0.88) 86%, rgba(27, 22, 18, 0) 100%); }
+
+/* ---------- 文字拆分 ---------- */
+.split { display: inline; }
+.split-ch { display: inline-block; white-space: pre; }
+
 /* ---------- 命令面板（Ctrl K） ---------- */
 .search-glyph { flex: none; overflow: visible; }
 .search-glyph .sg-lens { fill: currentColor; fill-opacity: 0.07; stroke: currentColor; stroke-width: 1.8; }

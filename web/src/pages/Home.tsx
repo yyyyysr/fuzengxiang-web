@@ -5,7 +5,7 @@ import { InkBlot, Mist, ridge } from "../components/Ink";
 import { Loader } from "../components/Loader";
 import { PointerMist } from "../components/PointerMist";
 import { TiltLink } from "../components/Tilt";
-import { CloudDivider, CountUp, Reveal, Stamp } from "../components/ui";
+import { CloudDivider, CountUp, Reveal, SplitText, Stamp } from "../components/ui";
 import { Avatar } from "../components/XiaoFu";
 import { api, kbAsset, type ImageItem } from "../lib/api";
 import { artUrl, LIFE_CHAPTERS } from "../lib/scenes";
@@ -82,7 +82,7 @@ function Hero({ ready }: { ready: boolean }) {
         </div>
         <motion.div className="hero-title" initial={{ opacity: 0, x: 30 }} animate={ready ? { opacity: 1, x: 0 } : {}} transition={{ delay: 1.2, duration: 1.2 }}>
           <Stamp text="傅增湘" size={78} />
-          <h1>藏园<span>书魂</span></h1>
+          <h1><SplitText text="藏园" play={ready} delay={1.5} stagger={0.22} /><span className="hero-h1-sub">书魂</span></h1>
           <p>傅增湘（1872—1949）<br />访书 · 辨书 · 校书 · 护书 · 传书</p>
           <div className="hero-actions">
             <button className="btn solid" onClick={() => document.getElementById("scroll")?.scrollIntoView({ behavior: "smooth" })}>展开长卷</button>
@@ -131,7 +131,7 @@ function Scroll() {
         </div>
         <motion.div className="scroll-heading" style={{ opacity: headOpacity, y: headY }}>
           <span className="eyebrow">藏园长卷</span>
-          <h2 className="brush">一卷书林，七十八年</h2>
+          <h2 className="brush"><SplitText text="一卷书林，七十八年" inView /></h2>
         </motion.div>
         <motion.svg className="scroll-far" style={{ x: farX }} viewBox={`0 0 ${trackW} 500`} preserveAspectRatio="none" aria-hidden>
           <path d={ridge(trackW, 500, 330, 230, 5, 14)} fill="#7d7366" opacity="0.18" />
@@ -204,7 +204,7 @@ function Entrances() {
       <div className="container">
         <Reveal className="center">
           <span className="eyebrow">从这里开始</span>
-          <h2 className="section-title brush">翻开一条线索</h2>
+          <h2 className="section-title brush"><SplitText text="翻开一条线索" inView /></h2>
           <CloudDivider />
         </Reveal>
         <div className="entr-grid">
@@ -253,7 +253,7 @@ function Columns() {
       <div className="container">
         <Reveal className="center">
           <span className="eyebrow">六个栏目</span>
-          <h2 className="section-title brush">认识人，追一卷书，查一条证据</h2>
+          <h2 className="section-title brush"><SplitText text="认识人，追一卷书，查一条证据" inView stagger={0.04} /></h2>
           <p className="muted center-text">每一个可展示的事实和人物连线，都能打开出处，回到原文的那一段。</p>
         </Reveal>
         <div className="bento">
@@ -366,7 +366,7 @@ function GalleryStrip() {
   if (!imgs.length) return null;
   return (
     <section className="section gallery-strip">
-      <div className="container"><Reveal><span className="eyebrow">藏园图像</span><h2 className="section-title brush">印与墨</h2></Reveal></div>
+      <div className="container"><Reveal><span className="eyebrow">藏园图像</span><h2 className="section-title brush"><SplitText text="印与墨" inView stagger={0.12} /></h2></Reveal></div>
       <div className="marquee">
         <div className="marquee-track">
           {[...imgs, ...imgs].map((im, i) => (

@@ -3,6 +3,7 @@ import Lenis from "lenis";
 import { useEffect } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { InkCursor } from "./components/InkCursor";
+import { InkVeil } from "./components/InkVeil";
 import { Nav } from "./components/Nav";
 import { Palette } from "./components/Palette";
 import { SourceDrawer } from "./components/SourceDrawer";
@@ -83,6 +84,7 @@ export default function App() {
       <SourceDrawer />
       <Palette />
       <XiaoFu />
+      <InkVeil />
       <InkCursor />
     </>
   );

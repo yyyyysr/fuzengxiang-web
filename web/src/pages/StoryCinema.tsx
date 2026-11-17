@@ -1,14 +1,55 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { InkStage, preloadImages } from "../components/InkStage";
 import { Markdown } from "../components/Markdown";
+import { Avatar } from "../components/XiaoFu";
 import { kbAsset, stripLinks, type Act, type Story } from "../lib/api";
 import { actArt, artUrl, STORY_ART } from "../lib/scenes";
 import { useAgent } from "../lib/store";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const reduced = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const MIDDLE_LINES = [
+  "每一幕下方都标着出处，点开就能读到原文那一段。",
+  "留意这一幕的时间和地点——放映结束后，要把几幕排回先后。",
+  "画面里的天气、光线和季节，是照着史料里的情形画的。",
+  "想自己掌握节奏？关掉右下角的“自动续播”，用 ← → 翻幕。",
+];
+
+function guideLine(i: number, total: number, symbols: boolean, sadHere: boolean) {
+  if (i < 0) return symbols ? `这一则是“校一页书”：${total} 种校勘符号，每种都配着真实批校。点“开始放映”，我陪你认。`
+    : `我是小傅。这则故事分 ${total} 幕，大约一分钟。点“开始放映”，我陪你看。`;
+  if (i === total - 1) return symbols ? "符号都认过了。下一步，去真实的批校页上把它们找出来。"
+    : "放映结束。点右下角“排一排先后”，把这几幕排回原来的顺序。";
+  if (sadHere) return "书正处在险境里……别急，往下看它的下落。";
+  if (i === 0) return "旁白会一个字一个字打出来；等不及就点一下文字，全文立刻出现。";
+  return MIDDLE_LINES[(i - 1) % MIDDLE_LINES.length];
+}
+
+function GestureHint({ onDone }: { onDone: () => void }) {
+  const touch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+  useEffect(() => {
+    const t = window.setTimeout(onDone, 5200);
+    window.addEventListener("keydown", onDone);
+    window.addEventListener("pointerdown", onDone);
+    return () => { window.clearTimeout(t); window.removeEventListener("keydown", onDone); window.removeEventListener("pointerdown", onDone); };
+  }, [onDone]);
+  return (
+    <motion.div className="scine-hint" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96, filter: "blur(6px)" }}
+      transition={{ duration: 0.5, ease: EASE }} aria-hidden>
+      <div className="scine-hint-stage">
+        <svg className="scine-hint-trail" viewBox="0 0 160 40"><path d="M150 26 C 110 8, 50 8, 10 26" /></svg>
+        <span className="scine-hint-ripple" />
+        <svg className="scine-hint-hand" viewBox="0 0 48 48">
+          <path d="M18 26V11a3 3 0 0 1 6 0v11l1-.2a3 3 0 0 1 3.5 2.3l.1.5.8-.1a3 3 0 0 1 3.3 2.4l.1.5.6-.1a3 3 0 0 1 3.4 2.6l.7 6.1A9 9 0 0 1 28.6 46H24a9 9 0 0 1-7.3-3.8L10 33a3 3 0 0 1 4.6-3.8z" />
+        </svg>
+      </div>
+      {!touch && <div className="scine-hint-keys"><kbd>←</kbd><kbd>→</kbd></div>}
+      <p>{touch ? "左右滑动，切换上一幕、下一幕" : "按 ← → 键，或左右滑动，切换幕"}</p>
+    </motion.div>
+  );
+}
 
 function Narration({ act, titles, onDone }: { act: Act; titles: Record<string, string>; onDone: () => void }) {
   const text = stripLinks(act.text).replace(/\*\*/g, "");
@@ -47,9 +88,11 @@ function Narration({ act, titles, onDone }: { act: Act; titles: Record<string, s
 export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFinish }: {
   story: Story; acts: Act[]; rankLabel: string; charFor: (i: number) => string; sadAct: number; sad: boolean; onFinish: () => void;
 }) {
-  const { express } = useAgent();
+  const { express, emotion } = useAgent();
   const symbols = story.mode === "symbols";
   const [i, setI] = useState(-1);
+  const [hint, setHint] = useState(false);
+  const hideHint = useCallback(() => setHint(false), []);
   const [dir, setDir] = useState(1);
   const [auto, setAuto] = useState(true);
   const [typed, setTyped] = useState(false);
@@ -83,6 +126,10 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
     if (sad && i === sadAct) express("sad", 5000);
     else if (i === last) express(sad ? "encourage" : "happy", 3000);
     else express("thinking", 1500);
+    if (i === 0 && !sessionStorage.getItem("fzx-cine-hint")) {
+      sessionStorage.setItem("fzx-cine-hint", "1");
+      setHint(true);
+    } else if (i > 0) setHint(false);
   }, [i]);
 
   useEffect(() => {
@@ -126,6 +173,15 @@ export function StoryCinema({ story, acts, rankLabel, charFor, sadAct, sad, onFi
         <Link to="/stories" className="scine-back">← 藏园故事</Link>
         <span className="scine-ep">重点故事 · 第{rankLabel}则</span>
       </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div key={i} className="scine-guide" initial={{ opacity: 0, y: -10, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: 8, filter: "blur(4px)", transition: { duration: 0.25 } }} transition={{ duration: 0.45, ease: EASE, delay: i < 0 ? 0.9 : 0.2 }} role="status">
+          <Avatar emotion={emotion} size={46} />
+          <p><b>小傅</b>{guideLine(i, acts.length, symbols, sad && i === sadAct)}</p>
+        </motion.div>
+      </AnimatePresence>
+      <AnimatePresence>{hint && <GestureHint onDone={hideHint} />}</AnimatePresence>
 
       <AnimatePresence mode="wait">
         {i < 0 ? (
