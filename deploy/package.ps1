@@ -21,6 +21,10 @@ Copy-Item "$kb\data\export" "$stage\kb\data\export" -Recurse
 Copy-Item "$kb\data\index\kb.sqlite", "$kb\data\index\embeddings.npy", "$kb\data\index\embeddings_ids.json" "$stage\kb\data\index\"
 if (Test-Path "$kb\data\index\onnx\model.onnx") { Copy-Item "$kb\data\index\onnx" "$stage\kb\data\index\onnx" -Recurse }
 Copy-Item "$kb\assets" "$stage\kb\assets" -Recurse
+# The wiki supplement page writes markdown into wiki/ and re-exports it with pipeline/kb/wiki.py.
+Copy-Item "$kb\wiki" "$stage\kb\wiki" -Recurse
+New-Item -ItemType Directory -Force "$stage\kb\pipeline\kb" | Out-Null
+Copy-Item "$kb\pipeline\kb\__init__.py", "$kb\pipeline\kb\config.py", "$kb\pipeline\kb\wiki.py" "$stage\kb\pipeline\kb\"
 Get-ChildItem $stage -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
 
 $tar = Join-Path $out "fuzengxiang-deploy.tar.gz"

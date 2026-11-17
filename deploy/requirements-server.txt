@@ -4,6 +4,9 @@ httpx>=0.27
 pydantic>=2
 opencc-python-reimplemented>=0.1.7
 jieba>=0.42
+# wiki supplement page: frontmatter and pdf uploads
+pyyaml>=6
+pypdf>=4
 # dense retrieval: ONNX query encoder (no torch on the server)
 numpy>=1.26
 onnxruntime>=1.18

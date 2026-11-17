@@ -66,6 +66,17 @@ else
   echo "    DEEPSEEK_API_KEY not given; keeping existing /etc/environment"
 fi
 
+echo "==> admin token for /admin/wiki"
+ADMIN_ENV=/etc/fuzengxiang.env
+if [[ -n "${ADMIN_TOKEN:-}" ]]; then
+  echo "ADMIN_TOKEN=$ADMIN_TOKEN" > "$ADMIN_ENV"
+elif [[ ! -s "$ADMIN_ENV" ]]; then
+  echo "ADMIN_TOKEN=$(head -c 18 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20)" > "$ADMIN_ENV"
+fi
+chmod 600 "$ADMIN_ENV"
+# entries written from the admin page live outside $BASE/kb so a redeploy does not wipe them
+mkdir -p "$BASE/admin-data"
+
 PORT=$(pick_port)
 echo "==> systemd service on port $PORT"
 cat > "$UNIT" <<EOF
@@ -76,7 +87,9 @@ After=network.target
 [Service]
 WorkingDirectory=$BASE/app
 EnvironmentFile=/etc/environment
+EnvironmentFile=-$ADMIN_ENV
 Environment=KB_ROOT=$BASE/kb
+Environment=ADMIN_DATA=$BASE/admin-data
 Environment=HOST=0.0.0.0
 Environment=PORT=$PORT
 Environment=ENABLE_DENSE=1
@@ -103,4 +116,5 @@ for i in $(seq 1 30); do
 done
 echo "==> health"
 curl -fsS "http://127.0.0.1:$PORT/api/health" | head -c 400; echo
+echo "admin token is stored in $ADMIN_ENV"
 echo "DONE port=$PORT"
